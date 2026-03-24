@@ -111,15 +111,15 @@ stargate_factory_0/
 
 ## 🧬 Architectural Topology
 
-### 1. The Gateway & Darwinian Matrix (Backend)
-* **API Router (`main.py`)**: The central hub handling atomic-level streaming, seamless state flushing, and immune to concurrency deadlocks.
-* **The Caliper Engine (`api_caliper.py`)**: When the sandbox detects an anomaly, this engine wakes a high-tier diagnostic model to extract logical patches (DNA) for adaptive evolution.
-* **Skill Dispatcher (`skills.py`)**: A reflective routing hub that dynamically mounts physical tools (Agents) and translates functions into LLM-readable schemas.
+### 1. The Darwinian Matrix & DNA Compiler (Backend)
+* **JIT DNA Compiler (`dna_compiler.py`)**: Abandons massive static system prompts. Dynamically extracts and assembles fragmented "Thought Imprints" (DNA shards) in O(1) time to construct task-specific contextual prompts, totally eliminating LLM attention decay.
+* **The Caliper & Ouroboros Engine (`api_caliper.py` & `api_ouroboros.py`)**: The self-healing loop. When the sandbox detects an execution anomaly, it extracts a snapshot, wakes a diagnostic model to generate a logical patch, and permanently writes it into the dynamic DNA pool. The system rewrites its own operating laws.
+* **Atomic Gateway (`main.py`)**: The central hub handling atomic-level streaming, seamless state flushing, and immune to concurrency deadlocks on legacy hardware.
 
 ### 2. Visual Downscaling & Native Canvas (Frontend)
-* **Streaming State Collapse (`app_chat.js`)**: Intercepts massive LLM entity tags, physically shielding the UI until state closure to eliminate DOM flicker.
-* **DAG Blueprint Generator (`work.js`)**: Built with native SVG curves for smooth rendering of complex node connections directly at the browser's lowest level.
-* **Holographic Dual-Track (`app_core.js`)**: Powers the split-screen visualizer, allowing the Architect to dialogue with AI while simultaneously auditing generated physical assets.
+* **Streaming State Collapse (`app_chat.js`)**: Intercepts massive LLM entity tags using pure Vanilla JS. Physically shields the UI during high-frequency data streams, collapsing into a stable render only upon payload closure to eradicate DOM flicker.
+* **Native DAG Assembly (`work.js`)**: Rejects heavy frontend armors. Uses native SVG cubic Bézier curves for physical node distance calculations and connections, ensuring hundreds of nodes flow smoothly directly at the browser's lowest level.
+* **Time-Space Rollback & SSE Radar**: If a node fails validation, the system automatically rolls back to the previous state with error context. Real-time `[MACHINE_SIGNALS]` are pumped via Server-Sent Events (SSE) to drive UI highlights without polling.
 
 ---
 
@@ -252,18 +252,18 @@ stargate_factory_0/
 
 ## 🧬 核心拓扑解析
 
-### 1. 纯净网关与达尔文演化矩阵 (后端)
-* **总控中枢 (`main.py`)**：负责 API 级联路由、无痕垃圾回收与流式数据落盘，免疫并发锁死与 RAM 溢出。
-* **游标卡尺引擎 (`api_caliper.py`)**：彻底抛弃固化的超长系统提示词。当外部算力舱传回异常快照时，唤醒高维诊断模型提取“逻辑补丁 (DNA)”，动态注入业务节点，实现系统的活体自适应演化。
-* **技能调度中枢 (`skills.py`)**：反射式路由中心，动态挂载物理特工工具（Skills），并将函数自动翻译为 AI 可理解的标准化 Schema。
+### 1. 达尔文演化矩阵与基因机床 (后端)
+* **JIT 基因机床 (`dna_compiler.py`)**：彻底抛弃超长且僵化的静态系统提示词。在算力请求发起的瞬间，O(1) 动态寻址并组装“思想钢印”碎片，实现算力极致压缩并从根本上消除大模型的注意力涣散。
+* **衔尾蛇自愈引擎 (`api_caliper.py` & `api_ouroboros.py`)**：活体演化闭环。当沙盒传回异常快照时，唤醒高维诊断模型提取“逻辑补丁 (DNA)”，并将其永久固化至动态基因池。系统在运行中自主改写其底层运转法则。
+* **纯净总网关 (`main.py`)**：负责 API 级联路由、无痕垃圾回收与流式数据落盘，在老旧物理节点上免疫并发锁死与 RAM 溢出。
 
 ### 2. 视觉降维打击与原生无尽画布 (前端)
-* **流式状态塌缩 (`app_chat.js`)**：在截获大模型巨量实体标签时实施“流式视觉遮罩”，在数据流闭合瞬间完成状态塌缩，彻底根除 DOM 闪烁。
-* **DAG 装配车间 (`work.js`)**：使用纯原生 SVG 三次贝塞尔曲线进行物理距离计算与节点连线，直穿浏览器底层渲染机制，同屏百节点丝滑流转。
-* **全息双轨视界 (`app_core.js`)**：驱动侧滑半屏预览模式，实现左脑与 AI 对话，右脑直接审视生成的物理文档资产，极致“所见即所得”。
+* **流式状态塌缩 (`app_chat.js`)**：抛弃 React 等重型装甲。在截获大模型巨量结构化实体标签时实施“流式视觉遮罩”，在数据流闭合瞬间完成状态塌缩，彻底根除 DOM 闪烁与重绘灾难。
+* **原生 DAG 装配车间 (`work.js`)**：使用纯原生 SVG 三次贝塞尔曲线进行物理距离计算与节点连线，直穿浏览器底层渲染机制，同屏百节点亦能丝滑流转。
+* **时空回溯与 SSE 战术雷达**：节点产出异常即触发“时空回溯”带错重试。后端通过 SSE 单向将密文脉冲实时泵入前端，免轮询直接物理驱动 UI 节点高亮与状态流转。
 
 ---
 
 ## ⚠️ 厂长声明 (Archived)
-本仓库为个人架构推演的定格快照。**本人非科班技术人员。**
+本仓库为个人架构推演的定格快照 文本均为AI代写。 **本人非科班技术人员。**
 本项目拒接任何形式的技术支持，不提供一键运行包，谢绝任何 Issue 与 PR。全库底层源码皆为本人以纯文本微操指挥 AI 意志代笔落盘的产物。如遇图纸晦涩、逻辑难解，请自行提取源码并拷问你自己的 AI 助手。
