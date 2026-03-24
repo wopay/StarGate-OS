@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🌌 星门 OS - 动态规则协作层</title>
+    <style>
+        /* ================= 极简工业风变量 ================= */
+        :root { 
+            --bg-dark: #0a0a0c; --bg-panel: #161719; --text-main: #e8e8e8; --text-muted: #888; 
+            --accent-color: #a8c7fa; --accent-cyan: #20c997; --danger-color: #ff6b6b; --border-color: #333; 
+            --core: #a8c7fa; --dynamic: #d8b4fe; --system: #20c997;
+        }
+        
+        html, body { margin: 0; padding: 0; background: var(--bg-dark); color: var(--text-main); font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .fixed-header { 
+            background: var(--bg-panel); padding: 0.8rem 1.2rem; border-bottom: 1px solid var(--border-color); 
+            display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 1000; position: fixed; top: 0; left: 0; right: 0; height: 60px; box-sizing: border-box;
+        }
+        .header-left { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
+        .icon-btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; text-decoration: none; white-space: nowrap;}
+        .icon-btn:hover { color: var(--text-main); border-color: #555; background: rgba(255,255,255,0.05); }
+        .header-title { margin: 0; font-size: 1.1rem; color: var(--text-main); letter-spacing: 1px; display: flex; align-items: center; gap: 6px; white-space: nowrap;}
+
+        .header-right { display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none; align-items: center; height: 100%;}
+        .header-right::-webkit-scrollbar { display: none; }
+        .nav-btn { background: transparent; border: none; color: var(--text-muted); padding: 0 12px; cursor: pointer; font-size: 0.9rem; transition: 0.2s; border-bottom: 2px solid transparent; text-decoration: none; white-space: nowrap; height: 100%; display: inline-flex; align-items: center; box-sizing: border-box;}
+        .nav-btn:hover { color: var(--text-main); }
+        .nav-btn.active { color: var(--accent-color); border-bottom-color: var(--accent-color); font-weight: bold; text-shadow: 0 0 10px rgba(168,199,250,0.3); }
+
+        .dashboard-container { max-width: 1400px; margin: 0 auto; padding: 80px 20px 60px 20px; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; }
+        
+        .filter-bar { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 15px; display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .filter-group { display: flex; align-items: center; gap: 8px; }
+        .filter-label { font-size: 0.8rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase; }
+        .filter-select { background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-main); padding: 6px 10px; border-radius: 4px; font-size: 0.85rem; outline: none; cursor: pointer; min-width: 120px; }
+        .filter-select:focus { border-color: var(--accent-color); }
+        
+        .system-toggle-box { margin-left: 10px; border-left: 1px solid var(--border-color); padding-left: 15px; display: flex; align-items: center; }
+        .system-toggle-label { display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--accent-cyan); font-size: 0.85rem; font-weight: bold; transition: 0.2s; user-select: none; }
+        .system-toggle-label:hover { filter: brightness(1.2); }
+        .system-checkbox { cursor: pointer; width: 16px; height: 16px; accent-color: var(--accent-cyan); }
+
+        .stat-badge { color: var(--text-muted); font-size: 0.8rem; font-weight: normal; }
+
+        .btn-magic { background: rgba(241, 196, 15, 0.1); border: 1px solid #f1c40f; color: #f1c40f; padding: 8px 15px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 6px; }
+        .btn-magic:hover { background: #f1c40f; color: #000; box-shadow: 0 4px 10px rgba(241, 196, 15, 0.3); }
+        .btn-engineer { background: rgba(255, 107, 107, 0.1); border: 1px solid var(--danger-color); color: var(--danger-color); padding: 8px 15px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 6px; }
+        .btn-engineer:hover { background: var(--danger-color); color: #000; box-shadow: 0 4px 10px rgba(255, 107, 107, 0.3); }
+        
+        .btn-ai-assist { background: rgba(216, 180, 254, 0.15); border: 1px solid var(--dynamic); color: var(--dynamic); padding: 8px 15px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 6px;}
+        .btn-ai-assist:hover { background: var(--dynamic); color: #000; box-shadow: 0 4px 10px rgba(216, 180, 254, 0.3); }
+
+        .dna-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
+        .dna-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .dna-card:hover { border-color: #5a5b5f; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+        
+        .dna-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; border-bottom: 1px dashed var(--border-color); padding-bottom: 10px; }
+        .dna-title-wrap { display: flex; flex-direction: column; gap: 4px; word-break: break-word; padding-right: 10px; }
+        .dna-name { font-size: 1rem; font-weight: bold; color: #fff; margin: 0; display: flex; align-items: center; gap: 6px; line-height: 1.3;}
+        .dna-id { font-size: 0.7rem; color: var(--text-muted); font-family: monospace; }
+        
+        .purge-btn { background: transparent; border: 1px solid var(--danger-color); color: var(--danger-color); width: 28px; height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; padding: 0; flex-shrink: 0; opacity: 0.7; }
+        .purge-btn:hover { opacity: 1; background: rgba(255,107,107,0.1); }
+        
+        .dna-badges { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+        .badge { padding: 3px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; border: 1px solid; }
+        .badge-dynamic { background: rgba(216, 180, 254, 0.1); color: var(--dynamic); border-color: rgba(216, 180, 254, 0.3); }
+        .badge-system { background: rgba(32, 201, 151, 0.1); color: var(--system); border-color: rgba(32, 201, 151, 0.3); }
+        .badge-type { background: rgba(255, 255, 255, 0.05); color: #ccc; border-color: #444; }
+        
+        .dna-desc { font-size: 0.85rem; color: #aaa; line-height: 1.5; flex-grow: 1; margin-bottom: 15px; word-break: break-word; }
+        
+        .view-btn { background: var(--bg-dark); border: 1px solid #444; color: var(--accent-color); padding: 8px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; text-align: center; margin-top: auto; font-weight: bold; display: flex; justify-content: center; align-items: center; gap: 6px;}
+        .view-btn:hover { border-color: var(--accent-color); background: rgba(168, 199, 250, 0.1); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 2000; display: none; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.2s; padding: 15px; box-sizing: border-box; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal-card { background: var(--bg-panel); border: 1px solid var(--border-color); width: 850px; max-width: 100%; border-radius: 12px; padding: 25px; display: flex; flex-direction: column; max-height: 90vh; box-sizing: border-box; transform: translateY(10px); transition: transform 0.2s; box-shadow: 0 15px 40px rgba(0,0,0,0.5);}
+        .modal-overlay.active .modal-card { transform: translateY(0); }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
+        .modal-title { font-size: 1.1rem; font-weight: bold; color: var(--accent-color); margin: 0; display: flex; align-items: center; gap: 8px;}
+        .close-modal-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem; line-height: 1; padding: 0; transition: 0.2s; }
+        .close-modal-btn:hover { color: var(--danger-color); }
+        
+        .modal-body { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding-right: 10px; }
+        .modal-body::-webkit-scrollbar { width: 6px; }
+        .modal-body::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+        
+        .input-box { display: flex; flex-direction: column; gap: 6px; }
+        .input-box label { font-size: 0.85rem; color: #aaa; font-weight: bold; }
+        .input-box input, .input-box textarea, .input-box select { background: var(--bg-dark); border: 1px solid var(--border-color); color: #fff; padding: 10px; border-radius: 6px; outline: none; font-family: 'Consolas', monospace; font-size: 0.9rem; transition: 0.3s; box-sizing: border-box; width: 100%; }
+        .input-box input:focus, .input-box textarea:focus, .input-box select:focus { border-color: var(--accent-color); box-shadow: 0 0 10px rgba(168,199,250,0.1) inset; }
+        .input-box textarea { resize: vertical; min-height: 250px; line-height: 1.5; }
+        
+        .modal-footer { margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 15px; }
+        .btn-cancel { background: transparent; border: 1px solid #555; color: #ccc; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;}
+        .btn-cancel:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .btn-save-modal { background: var(--accent-color); color: #000; border: none; padding: 8px 25px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-save-modal:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(168,199,250,0.3); }
+        .btn-save-modal:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .eng-chat-box { flex: 1; background: #000; border: 1px inset #444; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.85rem; color: var(--accent-color); line-height: 1.5; white-space: pre-wrap; min-height: 150px; max-height: 350px; overflow-y: auto; margin-bottom: 10px;}
+        .pulse-text { animation: pulse 1.5s infinite; color: var(--color-sop); }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+
+        #statusOverlay { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); padding: 12px 24px; border-radius: 30px; font-weight: bold; font-size: 0.95rem; z-index: 3000; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 10px; opacity: 0; pointer-events: none; background: rgba(16, 17, 19, 0.95); border: 1px solid var(--border-color); }
+        #statusOverlay.show { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto;}
+        #statusOverlay.success { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+        #statusOverlay.error { border-color: var(--danger-color); color: var(--danger-color); }
+        
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: 8px; grid-column: 1 / -1; font-size: 0.9rem; }
+
+        @media (max-width: 768px) {
+            .fixed-header { height: auto; flex-direction: column; align-items: flex-start; gap: 10px; padding: 10px 15px; }
+            .header-right { width: 100%; justify-content: flex-start; padding-bottom: 5px; }
+            .dashboard-container { padding-top: 100px; }
+            .filter-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+            .system-toggle-box { margin-left: 0; border-left: none; padding-left: 0; border-top: 1px solid var(--border-color); padding-top: 10px; }
+            .filter-select { width: 100%; }
+            .stat-badge { margin-left: 0; }
+            .btn-magic, .btn-engineer, .btn-ai-assist { justify-content: center; }
+        }
+
+        /* ================= ⏳ Mode 3: 时空档案馆 (Time Machine) ================= */
+        .timeline-modal { width: 850px; max-width: 95%; max-height: 85vh; display: flex; flex-direction: column; }
+        .timeline-container { flex: 1; overflow-y: auto; padding: 10px 20px 20px 5px; position: relative; }
+        .timeline-container::before { content: ''; position: absolute; left: 18px; top: 0; bottom: 0; width: 2px; background: #333; }
+        .timeline-item { position: relative; padding-left: 45px; margin-bottom: 25px; }
+        .timeline-marker { position: absolute; left: 11px; top: 5px; width: 16px; height: 16px; border-radius: 50%; background: var(--bg-dark); border: 2px solid #555; z-index: 2; transition: 0.3s; }
+        .timeline-item:hover .timeline-marker { background: var(--accent-color); border-color: #fff; box-shadow: 0 0 10px var(--accent-color); }
+        .timeline-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; transition: 0.2s; position: relative; overflow: hidden; }
+        .timeline-item:hover .timeline-card { border-color: #555; background: rgba(255,255,255,0.05); }
+        .timeline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .timeline-time { font-size: 0.85rem; color: #aaa; font-family: monospace; font-weight: bold; }
+        .timeline-type { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .type-auto { background: rgba(32,201,151,0.15); color: var(--system); border: 1px solid rgba(32,201,151,0.3); }
+        .type-manual { background: rgba(216,180,254,0.15); color: var(--dynamic); border: 1px solid rgba(216,180,254,0.3); }
+        .timeline-desc { font-size: 0.85rem; color: #eee; line-height: 1.5; word-break: break-word; }
+        .timeline-diff { font-size: 0.75rem; color: #888; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #333; font-family: monospace; }
+        .diff-add { color: #20c997; } .diff-del { color: #ff6b6b; } .diff-mod { color: #f1c40f; }
+        .timeline-actions { display: flex; gap: 10px; margin-top: 12px; }
+        .t-btn { background: #111; border: 1px solid #444; color: #ccc; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; transition: 0.2s; font-weight: bold;}
+        .t-btn:hover { background: #222; color: #fff; border-color: #666; }
+        .t-btn-restore { color: #4dabf7; border-color: rgba(77,171,247,0.4); }
+        .t-btn-restore:hover { background: rgba(77,171,247,0.1); border-color: #4dabf7; }
+        .t-btn-del:hover { background: rgba(255,107,107,0.1); color: #ff6b6b; border-color: #ff6b6b; }
+    </style>
+</head>
+<body>
+
+    <div class="fixed-header">
+        <div class="header-left">
+            <a href="/ai.html" class="icon-btn" title="返回算力集群">❮ 算力集群</a>
+            <h2 class="header-title"><span style="color: var(--dynamic);">✨</span> 星门协作层 (Dynamic DNA)</h2>
+        </div>
+        <div class="header-right">
+            <a href="/x.html" class="nav-btn">1 调度舱</a>
+            <a href="/xx.html" class="nav-btn">2 记录馆</a>
+            <a href="/osdna.html" class="nav-btn">3 系统层</a>
+            <a href="/dna.html" class="nav-btn active">4 协作层</a>
+        </div>
+    </div>
+
+    <div id="statusOverlay"><span class="icon"></span><span class="text"></span></div>
+
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 class="modal-title" id="editModalTitle">✍️ 规则配置控制台</h3>
+                <button class="close-modal-btn" onclick="closeEditModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editDnaId">
+                <input type="hidden" id="editDnaTier" value="dynamic">
+                
+                <div style="display: flex; gap: 15px;">
+                    <div class="input-box" style="flex: 1;">
+                        <label>标识 ID (不可重复大写英文字母)</label>
+                        <input type="text" id="editDnaIdInput" placeholder="例如: MY_NEW_RULE">
+                    </div>
+                    <div class="input-box" style="width: 150px;">
+                        <label>维度归属</label>
+                        <select id="editDnaType">
+                            <option value="identity">👤 认知人格</option>
+                            <option value="sop">⚙️ 协作工序</option>
+                            <option value="rule">🚨 绝对红线</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="input-box">
+                    <label>显性名称 (Name)</label>
+                    <input type="text" id="editDnaName">
+                </div>
+                <div class="input-box">
+                    <label>极简摘要 (Description)</label>
+                    <input type="text" id="editDnaDesc" placeholder="简短描述该设定的作用...">
+                </div>
+                
+                <div style="display: flex; gap: 15px;">
+                    <div class="input-box" style="flex: 1;">
+                        <label>🎯 执行配额 (Nodes)</label>
+                        <input type="number" id="editDnaNodes" value="15" min="1" max="100">
+                    </div>
+                    <div class="input-box" style="flex: 1;">
+                        <label>🛡️ 弹性缓冲 (Buffer)</label>
+                        <input type="number" id="editDnaBuffer" value="5" min="0" max="50">
+                    </div>
+                    <div class="input-box" style="flex: 1;">
+                        <label>🏆 初始权重 (Weight)</label>
+                        <input type="number" id="editDnaWeight" value="50" min="0" max="100">
+                    </div>
+                </div>
+
+                <div class="input-box" style="flex:1;">
+                    <label>底层执行明文 (Content) <span style="color:#666; font-weight:normal; font-size:0.8rem;">(支持 {{变量}} 宏替换)</span></label>
+                    <textarea id="editDnaContent"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeEditModal()">取消</button>
+                <button class="btn-save-modal" onclick="saveDnaMutation()">💾 保存并落盘至物理磁道</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="batchInjectModal">
+        <div class="modal-card" style="width: 750px;">
+            <div class="modal-header">
+                <h3 class="modal-title" style="color: #b388ff;">🚀 基因图谱热重载 (JSON 导入)</h3>
+                <button class="close-modal-btn" onclick="closeBatchInjectModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <p style="font-size: 0.85rem; color: #888; margin: 0;">支持标准 JSON 数组格式。包含算力配额与权重的高维注入通道。</p>
+                    <button class="btn-magic" style="padding: 4px 10px; font-size: 0.8rem;" onclick="copyDnaSchema()">📋 一键复制 AI 生成规范</button>
+                </div>
+                
+                <textarea id="batchJsonInput" style="width: 100%; height: 350px; background: #000; color: var(--accent-cyan); border: 1px solid #333; padding: 15px; font-family: 'Consolas', monospace; font-size: 0.85rem; border-radius: 6px; resize: vertical;" placeholder='[\n  {\n    "id": "SYS_OR_DYN_NODE_01",\n    "name": "✨ 示例模块",\n    "type": "sop",\n    "desc": "这里是20字以内的极简摘要",\n    "content": "执行逻辑明文...",\n    "tier": "dynamic", \n    "compute_nodes": 15,\n    "buffer_nodes": 5,\n    "weight": 80\n  }\n]'></textarea>
+                
+                <div style="margin-top: 15px; padding: 10px; background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3); border-radius: 6px; display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="wipeBeforeImport" style="width: 18px; height: 18px; accent-color: var(--danger-color); cursor: pointer;">
+                    <label for="wipeBeforeImport" style="color: var(--danger-color); font-weight: bold; cursor: pointer; user-select: none;">
+                        ⚠️ 执行前清空全库 (焦土重铸模式)
+                    </label>
+                </div>
+                <p style="font-size: 0.75rem; color: #666; margin: 5px 0 0 28px;">勾选后，将先物理抹除当前维度的基因切片，再注入新数据。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeBatchInjectModal()">放弃</button>
+                <button class="btn-save-modal" style="background: #b388ff; color: #000;" onclick="executeBatchInject()">⚡ 立即执行热重载</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="engineerConfigModal">
+        <div class="modal-card" style="width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title" style="color: var(--danger-color);">🧠 算力脑核指派 (驻场工程师)</h3>
+                <button class="close-modal-btn" onclick="closeEngineerConfigModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:0.85rem; color:#888; margin-top: 0; line-height: 1.5;">系统已建立全域互联。请从算力池中指定一台计算节点，由其负责为您自动梳理并演化全新的规则图谱。</p>
+                <div class="input-box">
+                    <label>选择承载演化任务的节点</label>
+                    <select id="eng-vendor-select" class="select" style="margin-top: 8px;"></select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeEngineerConfigModal()">取消</button>
+                <button class="btn-save-modal" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); color:#000;" onclick="saveEngineerConfig()">💾 锁定并授权</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="generatorModal">
+        <div class="modal-card" style="width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title" style="color: var(--color-sop);">✨ 唤醒创世引擎进行规则演化</h3>
+                <button class="close-modal-btn" onclick="closeGeneratorModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:0.85rem; color:#888; margin-top: 0; line-height: 1.5;">注入您的【造物主神谕】，创世引擎将自动拆解出“角色、工序、红线”并直接坍缩为运行配置。</p>
+                <div class="input-box">
+                    <label>造物主神谕 (神意描绘)</label>
+                    <textarea class="textarea" id="gen-req" style="min-height: 100px;" placeholder="例如：我需要配置一个数据清理模块，要求它严格过滤 HTML 标签，且输出必须保持 JSON 格式，绝不能擅自修改原始数据核心字段。"></textarea>
+                </div>
+                <div class="eng-chat-box" id="gen-output" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeGeneratorModal()">放弃</button>
+                <button class="btn-save-modal" id="btn-do-gen" style="background: var(--color-sop); color:#000;" onclick="executeGeneration()">🚀 执行坍缩与落盘</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="timelineModal">
+    <div class="modal-card timeline-modal">
+        <div class="modal-header">
+            <h3 class="modal-title" style="color: #4dabf7;">⏳ 基因时空档案馆 (Time Machine)</h3>
+            <button class="close-modal-btn" onclick="closeTimelineModal()">×</button>
+        </div>
+        <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+            <p style="font-size: 0.8rem; color: #888; margin: 0;">系统会自动捕获底层状态突变。您也可以随时执行手动快照。</p>
+            <button class="btn-save-modal" style="background: #4dabf7; color: #000; padding: 6px 15px; font-size: 0.85rem;" onclick="createManualSnapshot()">📸 提取当前时空快照</button>
+        </div>
+        <div class="timeline-container" id="timeline-list">
+            </div>
+    </div>
+</div>
+
+<div class="dashboard-container">
+        
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label class="filter-label">属性维度</label>
+                <select id="filterType" class="filter-select" onchange="renderDnaGrid()">
+                    <option value="all">🌐 全部分类</option>
+                    <option value="identity">👤 认知人格</option>
+                    <option value="sop">⚙️ 工序大纲</option>
+                    <option value="rule">🚨 绝对红线</option>
+                </select>
+            </div>
+            
+            <div class="system-toggle-box">
+                <label class="system-toggle-label" title="开启后将显示系统出厂自带的默认底层规则">
+                    <input type="checkbox" id="showSystemDna" class="system-checkbox" onchange="renderDnaGrid()">
+                    🛡️ 显示系统默认基因
+                </label>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-left: auto; align-items: center; flex-wrap: wrap;">
+                <button class="btn-ai-assist" onclick="openEngineerConfigModal()" title="指派负责配置演化的底层脑核">🧠 指定脑核</button>
+                <button class="btn-ai-assist" onclick="openGeneratorModal()" title="唤醒创世引擎自动编写配置">✨ 唤醒创世引擎</button>
+                
+                <div style="width: 1px; height: 20px; background: var(--border-color); margin: 0 5px;"></div>
+                
+                <button class="btn-magic" style="border-color: #b388ff; color: #b388ff;" onclick="openBatchInjectModal()" title="通过剪贴板批量导入 JSON 格式法则">🚀 基因图谱热重载</button>
+                <button class="btn-magic" onclick="exportDnaZip()" title="将当前协作层的配置打包下载">📦 提取全息快照</button>
+                
+                <input type="file" id="osZipUploader" accept=".zip" style="display: none;" onchange="handleZipUpload(event)">
+                <button class="btn-engineer" onclick="document.getElementById('osZipUploader').click()" title="警告：将物理抹除协作层配置并以 ZIP 快照覆写！">☢️ 快照全域覆写</button>
+                
+                <div style="width: 1px; height: 20px; background: var(--border-color); margin: 0 5px;"></div>
+            
+            <button class="btn-save" onclick="openNewDnaModal()">+ 提炼新基因</button>
+            
+            <button class="btn-magic" style="border-color: #4dabf7; color: #4dabf7;" onclick="openTimelineModal()" title="查看基因库的历史变迁并支持 S/L">⏳ 时空档案馆 (S/L)</button>
+
+            <div class="stat-badge" id="statBadge" style="margin-left: 5px;">数据拉取中...</div>
+        </div>
+    </div>
+
+        <div id="dnaGridContainer" class="dna-grid">
+            <div class="empty-state">正在读取物理磁道...</div>
+        </div>
+    </div>
+<script>
+        let allDnas = []; 
+        let AI_VENDORS = []; // <--- 💡 修复点1：全域绝对唯一的声明，彻底拔除重复宕机漏洞
+
+        let statusTimer;
+        function showStatus(type, message) {
+            const overlay = document.getElementById('statusOverlay');
+            overlay.className = `show ${type}`;
+            if (type === 'success') { overlay.innerHTML = `<span class="icon">✅</span><span class="text">${message}</span>`; } 
+            else if (type === 'error') { overlay.innerHTML = `<span class="icon">❌</span><span class="text">${message}</span>`; } 
+            else { overlay.innerHTML = `<span class="icon">⚡</span><span class="text">${message}</span>`; }
+            clearTimeout(statusTimer);
+            statusTimer = setTimeout(() => { overlay.className = ''; }, 3000);
+        }
+
+        // ==========================================
+        // 💾 容灾备份双擎逻辑 (兼容 HTTP 局域网)
+        // ==========================================
+        function exportDnaZip() {
+            showStatus('info', '📦 正在生成协作层全息快照...');
+            const downloadUrl = '/api/config/dna/backup';
+            const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const fileName = `Collaboration_Layer_Snapshot_${dateStr}.zip`;
+
+            if (window.isSecureContext) {
+                fetch(downloadUrl, { method: 'GET' })
+                    .then(res => {
+                        if (!res.ok) throw new Error("快照请求被拒绝");
+                        return res.blob();
+                    })
+                    .then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        showStatus('success', '✅ 协作层全息快照已安全保存至本地！');
+                    })
+                    .catch(e => {
+                        console.warn("⚠️ 高级下载引擎受阻，触发原生降级...", e);
+                        fallbackDownload(downloadUrl, fileName);
+                    });
+            } else {
+                fallbackDownload(downloadUrl, fileName);
+            }
+        }
+
+        function fallbackDownload(url, fileName) {
+            try {
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => showStatus('success', '✅ [原生通道] 快照下载指令已发送！'), 1000);
+            } catch (e) {
+                showStatus('error', '❌ 彻底导出失败: ' + e.message);
+            }
+        }
+
+        async function handleZipUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!confirm('☢️ 【协作层重置警告】\n\n此操作将物理抹除当前所有的动态协作配置，并以 ZIP 压缩包中的状态全量覆写。\n\n⚠️ 请确保所选快照稳定可靠。\n是否授权执行？')) {
+                event.target.value = '';
+                return;
+            }
+
+            showStatus('info', '☢️ 正在执行系统底层物理覆写...');
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/api/config/dna/restore', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!res.ok) throw new Error("系统无法完成快照恢复");
+                
+                showStatus('success', '✨ 协作状态已重置！正在同步达尔文引擎数据...');
+                await fetchAllDnas(); 
+            } catch (e) {
+                showStatus('error', '❌ 恢复过程受阻: ' + e.message);
+            } finally {
+                event.target.value = ''; 
+            }
+        }
+
+        // ==========================================
+        // 🌐 核心大盘同步引擎 (悲观锁死策略)
+        // ==========================================
+        async function fetchAllDnas() {
+            try {
+                const res = await fetch('/api/config/dna');
+                if (!res.ok) throw new Error("无法读取物理磁道数据");
+                const data = await res.json();
+                
+                let rawVault = Array.isArray(data.vault) ? data.vault : [];
+                
+                // 🚨 强制去重与脏数据清洗护盾
+                const seenIds = new Set();
+                allDnas = rawVault.filter(item => {
+                    // 🛡️ 物理防弹衣：当场粉碎没有 ID 或损坏的空壳文件！
+                    if (!item || !item.id || String(item.id).trim() === '' || item.id === 'undefined') return false;
+
+                    if (item.tier === 'core') return false; // 绝对隔离系统核心层
+                    if (seenIds.has(item.id)) return false; 
+                    seenIds.add(item.id);
+                    return true;
+                });
+                
+                renderDnaGrid();
+                // ⏳ 触发时空档案馆侦测引擎 (Diff 拦截)
+                if (typeof detectAndAutoSave === 'function') detectAndAutoSave();
+            } catch (e) {
+                showStatus('error', `状态同步失败: ${e.message}`);
+                document.getElementById('dnaGridContainer').innerHTML = `<div class="empty-state" style="color:var(--danger-color);">⚠️ 无法连接底层配置系统，请检查网络或后端状态。</div>`;
+            }
+        }
+
+        // ==========================================
+        // 🖥️ 视图渲染层
+        // ==========================================
+        function renderDnaGrid() {
+            const container = document.getElementById('dnaGridContainer');
+            const filterType = document.getElementById('filterType').value;
+            const showSystem = document.getElementById('showSystemDna').checked; 
+            
+            let filteredDnas = allDnas.filter(dna => {
+                const isSystem = !dna.desc || dna.desc.trim() === '';
+                
+                // 💡 核心修复点2：精准物理隔离。协作面板只展示 dynamic，但如果开启系统透视，则放行 system 基因（即便它们是 core 层）
+                if (dna.tier === 'core' && !isSystem) return false; 
+                if (dna.tier === 'core' && isSystem && !showSystem) return false;
+
+                if (!showSystem && isSystem) return false;
+                return (filterType === 'all' || dna.type === filterType);
+            });
+            
+            filteredDnas.sort((a, b) => (b.weight || 50) - (a.weight || 50));
+
+            document.getElementById('statBadge').innerText = `已检出 ${filteredDnas.length} 个协作模块`;
+
+            if (filteredDnas.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size:3rem; margin-bottom:10px;">🌌</div>
+                        当前维度下未发现相关配置组件。<br>
+                        <span style="font-size:0.8rem; color:#555; margin-top:10px; display:inline-block;">(若需查看系统底层初始规则，请勾选顶部的 [显示系统默认基因])</span>
+                    </div>`;
+                return;
+            }
+
+            let html = '';
+            filteredDnas.forEach(dna => {
+                const isSystem = !dna.desc || dna.desc.trim() === '';
+                
+                let typeLabel = '未知组件', typeIcon = '❓';
+                if (dna.type === 'identity') { typeLabel = '认知人格'; typeIcon = '👤'; }
+                else if (dna.type === 'sop') { typeLabel = '协作工序'; typeIcon = '⚙️'; }
+                else if (dna.type === 'rule') { typeLabel = '绝对红线'; typeIcon = '🚨'; }
+
+                const estTokens = Math.ceil((dna.content || '').length * 1.5);
+                const safeName = escapeHtml(dna.name || '❓ 未定义配置');
+                const safeDesc = isSystem ? '⚙️ [系统底层] 维持模块流转的基础规则，不支持自定义摘要。' : escapeHtml(dna.desc);
+                const systemBadgeHtml = isSystem ? `<span class="badge badge-system">🛡️ 系统默认</span>` : '';
+                
+                const weight = dna.weight !== undefined ? dna.weight : 50;
+                const nodes = dna.compute_nodes || 15;
+                const buffer = dna.buffer_nodes || 5;
+                const wins = dna.success_count || 0;
+                const deaths = dna.death_count || 0;
+                const total = wins + deaths;
+                const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
+                
+                let weightColor = weight >= 80 ? '#f1c40f' : (weight <= 30 ? '#ff6b6b' : '#666');
+
+                html += `
+                    <div class="dna-card" id="card_${dna.id}">
+                        <div class="dna-header">
+                            <div class="dna-title-wrap">
+                                <div class="dna-name">${typeIcon} ${safeName}</div>
+                                <div class="dna-id">${dna.id}</div>
+                            </div>
+                            <button class="purge-btn" title="投入赛博坟场" onclick="archiveDna('${dna.tier}', '${dna.id}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                            </button>
+                        </div>
+                        <div class="dna-badges">
+                            ${systemBadgeHtml}
+                            <span class="badge badge-dynamic">✨ 动态衍生</span>
+                            <span class="badge badge-type">${typeLabel}</span>
+                            <span class="badge" style="background: rgba(255,255,255,0.05); color: #aaa; border-color: #444;" title="预估资源开销">⚖️ ~${estTokens} T</span>
+                        </div>
+                        <div class="dna-desc" style="${isSystem ? 'color:#555; font-style:italic;' : ''}">${safeDesc}</div>
+                        
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #333; padding-top:10px; font-size:11px; margin-bottom:10px;">
+                            <div style="color:#aaa;">
+                                🎯 执行配额: <span style="color:var(--accent-cyan); font-weight:bold;">${nodes}</span> <span style="color:#666;">(+${buffer})</span>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <span style="color:${weightColor}; font-weight:bold;" title="达尔文推荐指数">🏆 权重: ${weight}</span>
+                                <span style="color:${winRate >= 50 || total === 0 ? 'var(--accent-cyan)' : 'var(--danger-color)'};" title="运行成功率">⚔️ ${winRate}% (${wins} / ${total})</span>
+                            </div>
+                        </div>
+
+                        <button class="view-btn" onclick="openEditModal('${dna.id}')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            配置管理
+                        </button>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // ==========================================
+        // ✍️ 细粒度修改与物理阻断 (悲观同步)
+        // ==========================================
+        function openNewDnaModal() {
+            document.getElementById('editModalTitle').innerHTML = `✨ 新建规则配置`;
+            document.getElementById('editDnaId').value = '';
+            
+            const newId = 'DYN_NEW_' + Math.random().toString(36).substr(2, 6).toUpperCase();
+            document.getElementById('editDnaIdInput').value = newId;
+            document.getElementById('editDnaIdInput').readOnly = false;
+            
+            document.getElementById('editDnaTier').value = 'dynamic'; 
+            document.getElementById('editDnaType').value = document.getElementById('filterType').value === 'all' ? 'sop' : document.getElementById('filterType').value;
+            document.getElementById('editDnaName').value = '';
+            document.getElementById('editDnaDesc').value = '';
+            document.getElementById('editDnaContent').value = '';
+            // 新建时赋予默认底层算力
+            document.getElementById('editDnaNodes').value = 15;
+            document.getElementById('editDnaBuffer').value = 5;
+            document.getElementById('editDnaWeight').value = 50;
+            
+            document.getElementById('editModal').classList.add('active'); // 💡 修复点3：统一使用 active
+        }
+
+        function openEditModal(dnaId) {
+            const dna = allDnas.find(d => d.id === dnaId);
+            if (!dna) return;
+            
+            const isSystem = !dna.desc || dna.desc.trim() === '';
+            const systemBadge = isSystem ? `<span style="background:var(--system); color:#000; padding:2px 6px; border-radius:4px; font-size:0.7rem; margin-right:8px;">🛡️ 系统默认</span>` : '';
+
+            document.getElementById('editModalTitle').innerHTML = `${systemBadge} ✍️ [${dna.id}] 规则编辑`;
+            
+            document.getElementById('editDnaId').value = dna.id;
+            document.getElementById('editDnaIdInput').value = dna.id;
+            // 已有记录不允许修改 ID，防止主键混乱
+            document.getElementById('editDnaIdInput').readOnly = true; 
+            
+            document.getElementById('editDnaTier').value = dna.tier || 'dynamic'; 
+            document.getElementById('editDnaType').value = dna.type || 'sop'; 
+            document.getElementById('editDnaName').value = dna.name || '';
+            document.getElementById('editDnaDesc').value = dna.desc || '';
+            document.getElementById('editDnaContent').value = (dna.content || '').replace(/\\n/g, '\n');
+            // 编辑时精准回显真实算力数据
+            document.getElementById('editDnaNodes').value = dna.compute_nodes !== undefined ? dna.compute_nodes : 15;
+            document.getElementById('editDnaBuffer').value = dna.buffer_nodes !== undefined ? dna.buffer_nodes : 5;
+            document.getElementById('editDnaWeight').value = dna.weight !== undefined ? dna.weight : 50;
+            
+            document.getElementById('editModal').classList.add('active');
+        }
+        
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+        }
+
+        async function saveDnaMutation() {
+            let finalId = document.getElementById('editDnaIdInput').value.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '');
+            if(!finalId) { alert("ID 不能为空！"); return; }
+            
+            const oldId = document.getElementById('editDnaId').value;
+            const tier = document.getElementById('editDnaTier').value;
+            const type = document.getElementById('editDnaType').value;
+            const name = document.getElementById('editDnaName').value.trim();
+            let desc = document.getElementById('editDnaDesc').value.trim();
+            let content = document.getElementById('editDnaContent').value || "";
+            
+            content = content.replace(/\u00A0/g, ' ').replace(/\n/g, '\\n');
+            const estTokens = Math.ceil(content.length * 1.5);
+            desc = desc.replace(/\s*\[配置开销:\s*~\d+\s*T\]/g, '').trim(); 
+            desc = desc ? `${desc} [配置开销: ~${estTokens} T]` : `[配置开销: ~${estTokens} T]`;
+
+            if(!oldId && allDnas.some(d => d.id === finalId)) {
+                alert(`ID [${finalId}] 已存在，请更换！`); return;
+            }
+
+            const btn = document.querySelector('.btn-save-modal');
+            btn.innerHTML = '⏳ 注入中...';
+            btn.disabled = true;
+
+            const payload = { id: finalId, type: type, name: name, desc: desc, content: content };
+            // 根据所在文件动态获取 tier
+            payload.tier = document.getElementById('editDnaTier').value || 'dynamic'; 
+            
+            // 💡 厂长强行越权：读取面板数值注入 payload
+            payload.compute_nodes = parseInt(document.getElementById('editDnaNodes').value) || 15;
+            payload.buffer_nodes = parseInt(document.getElementById('editDnaBuffer').value) || 5;
+            payload.weight = parseInt(document.getElementById('editDnaWeight').value) || 50;
+
+            try {
+                if(oldId && oldId !== finalId) {
+                    await fetch(`/api/config/dna/${tier}/${oldId}`, { method: 'DELETE' });
+                }
+                
+                const res = await fetch(`/api/config/dna/${tier}/${finalId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) throw new Error("系统拒绝了写入请求");
+
+                closeEditModal();
+                showStatus('success', `✨ 基因 [${finalId}] 已成功同步！`);
+
+                await fetchAllDnas(); 
+
+            } catch (e) {
+                showStatus('error', `配置应用失败: ${e.message}`);
+                alert("⚠️ 如果持续失败，请检查系统接口状态！");
+            } finally {
+                btn.innerHTML = '💾 保存并落盘至物理磁道';
+                btn.disabled = false;
+            }
+        }
+
+        async function archiveDna(tier, dnaId) {
+            const dna = allDnas.find(d => d.id === dnaId);
+            const isSystem = dna && (!dna.desc || dna.desc.trim() === '');
+            
+            let warnMsg = "";
+            if (isSystem) { warnMsg = `🛑 【系统级警告】 🛑\n\n[${dnaId}] 属于系统的底层默认模块！\n移除它将可能导致部分关联功能异常。确认强制卸载吗？`; } 
+            else { warnMsg = `确认将此基因切片 [${dnaId}] 投入赛博坟场吗？`; }
+                
+            if (!confirm(warnMsg)) return;
+
+            const card = document.getElementById(`card_${dnaId}`);
+            if(card) { card.style.opacity = '0.5'; card.style.pointerEvents = 'none'; }
+
+            try {
+                const res = await fetch(`/api/config/dna/${tier}/${dnaId}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error("接口调用未成功");
+                
+                showStatus('success', `基因切片已销毁: ${dnaId}`);
+                await fetchAllDnas();
+            } catch (e) {
+                showStatus('error', `操作异常: ${e.message}`);
+                if(card) { card.style.opacity = '1'; card.style.pointerEvents = 'auto'; }
+            }
+        }
+
+        // ==========================================
+        // 🚀 模式一：系统配置热重载 (JSON 导入)
+        // ==========================================
+        function openBatchInjectModal() {
+            document.getElementById('batchJsonInput').value = '';
+            document.getElementById('wipeBeforeImport').checked = false;
+            document.getElementById('batchInjectModal').classList.add('active'); // 💡 修复点3
+        }
+
+        function closeBatchInjectModal() {
+            document.getElementById('batchInjectModal').classList.remove('active');
+        }
+
+        async function executeBatchInject() {
+            const rawJson = document.getElementById('batchJsonInput').value.trim();
+            const isWipe = document.getElementById('wipeBeforeImport').checked;
+            
+            if (!rawJson) { showStatus('error', '❌ 请粘贴 JSON 数据'); return; }
+
+            let dnaList = [];
+            try {
+                dnaList = JSON.parse(rawJson);
+                if (!Array.isArray(dnaList)) throw new Error("数据必须是 JSON 数组格式");
+            } catch (e) { showStatus('error', '❌ JSON 解析失败: ' + e.message); return; }
+
+            const btn = document.querySelector('#batchInjectModal .btn-save-modal');
+            btn.innerHTML = '⏳ 逻辑演化中...';
+            btn.disabled = true;
+
+            try {
+                if (isWipe) {
+                    showStatus('info', '☢️ 正在执行焦土重铸...');
+                    const dynamicDnas = allDnas.filter(d => d.tier === 'dynamic');
+                    const deletePromises = dynamicDnas.map(d => {
+                        const isSystem = !d.desc || d.desc.trim() === '';
+                        if (isSystem) return Promise.resolve(); 
+                        return fetch(`/api/config/dna/dynamic/${d.id}`, { method: 'DELETE' });
+                    });
+                    await Promise.all(deletePromises);
+                    console.log(`🧹 历史动态基因清理完毕`);
+                }
+
+                showStatus('info', `🚀 正在同步 ${dnaList.length} 个协作基因...`);
+                const putPromises = dnaList.map(item => {
+                    const finalId = item.id || `DYN_${Math.random().toString(36).slice(-6).toUpperCase()}`;
+                    const payload = {
+                        name: item.name || '未命名配置',
+                        type: item.type || 'sop',
+                        desc: item.desc || '[批量导入]',
+                        content: item.content || '',
+                        tier: 'dynamic'
+                    };
+                    return fetch(`/api/config/dna/dynamic/${finalId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                });
+
+                await Promise.all(putPromises);
+                showStatus('success', `✅ 演化成功！${dnaList.length} 个基因已应用。`);
+                closeBatchInjectModal();
+                
+                await fetchAllDnas();
+            } catch (error) {
+                showStatus('error', '❌ 批量同步中断: ' + error.message);
+            } finally {
+                btn.innerHTML = '⚡ 立即执行进化';
+                btn.disabled = false;
+            }
+        }
+
+        // ==========================================
+        // 📋 厂长专属：AI 提示词标准生成器 (双擎降级版)
+        // ==========================================
+        function copyDnaSchema() {
+            const schemaPrompt = `请作为一个顶级的星门架构师，为我生成系统配置。
+你必须且只能输出一个合法的 JSON 数组格式，绝对禁止使用 markdown 代码块（严禁输出 \`\`\`json ），严禁附带任何解释。
+
+全量字段结构规范必须严格如下：
+[
+  {
+    "id": "全大写字母与下划线组合(必须全域唯一，如 DYN_DATA_CLEANER)",
+    "name": "带Emoji的中文名称",
+    "type": "identity(认知人格) | sop(协作工序) | rule(绝对红线)",
+    "desc": "20字以内的极简摘要",
+    "content": "核心逻辑文本(支持使用 {{ID}} 语法调用其他模块)",
+    "tier": "dynamic", // 或 core (系统核心层使用 core)
+    "compute_nodes": 15, // 初始执行配额 (整型，默认15，范围1-100)
+    "buffer_nodes": 5, // 弹性缓冲池 (整型，默认5，范围0-50)
+    "weight": 50 // 初始权重，决定优先级 (整型，默认50，范围0-100)
+  }
+]
+
+请根据我接下来的业务需求，按照上述包含算力与权重的 JSON 结构，为我成套生成规则：`;
+
+            // 🚀 策略 A：高级安全通道 (HTTPS 或 Localhost)
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(schemaPrompt).then(() => {
+                    showStatus('success', '📋 包含算力配额的 AI 生成规范已复制！直接发给 AI 即可。');
+                }).catch(err => {
+                    showStatus('error', '❌ 复制失败: ' + err);
+                });
+            } else {
+                // 🚜 策略 B：原生降级通道 (应对 file:// 或 局域网 HTTP 环境)
+                let textArea = document.createElement("textarea");
+                textArea.value = schemaPrompt;
+                // 将文本框丢到屏幕物理可视区之外
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                textArea.style.top = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                try {
+                    let successful = document.execCommand('copy');
+                    if(successful) {
+                        showStatus('success', '📋 [降级通道] AI 生成规范已复制！');
+                    } else {
+                        showStatus('error', '❌ 降级复制失败，被浏览器拦截');
+                    }
+                } catch (err) {
+                    showStatus('error', '❌ 浏览器物理拒绝了复制指令');
+                }
+                
+                // 扫尾：销毁隐形节点
+                textArea.remove();
+            }
+        }
+
+        // ==========================================
+        // 🧠 AI 协作助手逻辑 (与计算集群同步)
+        // ==========================================
+        async function loadAIVendors() {
+            try {
+                const res = await fetch('/api/config/ai');
+                const data = await res.json();
+                let flat = [];
+                if (data.categories) data.categories.forEach(c => c.nodes.forEach(n => { if (n.enabled !== false) flat.push(n); }));
+                else if (data.vendors) flat = data.vendors;
+                
+                flat.sort((a, b) => {
+                    const aIsCli = a.exec_mode === 'cli';
+                    const bIsCli = b.exec_mode === 'cli';
+                    if (aIsCli && !bIsCli) return -1;
+                    if (!aIsCli && bIsCli) return 1;
+                    return 0;
+                });
+                AI_VENDORS = flat;
+
+                const sel = document.getElementById('eng-vendor-select');
+                if (sel) {
+                    sel.innerHTML = flat.map(v => `<option value="${v.id}">[${v.exec_mode==='cli'?'💻':'🌐'}] ${v.name}</option>`).join('');
+                }
+            } catch (e) { console.error("加载计算集群列表未能完成", e); }
+        }
+
+        function openEngineerConfigModal() {
+            if (AI_VENDORS.length === 0) { alert("⚠️ 机房暂无可用算力！"); return; }
+            const savedVendorId = localStorage.getItem('dna_engineer_vendor_id');
+            const sel = document.getElementById('eng-vendor-select');
+            if (savedVendorId && AI_VENDORS.some(v => v.id === savedVendorId)) sel.value = savedVendorId;
+            document.getElementById('engineerConfigModal').classList.add('active'); // 💡 修复点3
+        }
+        
+        function closeEngineerConfigModal() { document.getElementById('engineerConfigModal').classList.remove('active'); }
+        
+        function saveEngineerConfig() {
+            const vendorId = document.getElementById('eng-vendor-select').value;
+            localStorage.setItem('dna_engineer_vendor_id', vendorId);
+            closeEngineerConfigModal();
+            showStatus('success', "🧠 驻场脑核已锁定！");
+        }
+
+        function openGeneratorModal() { 
+            document.getElementById('gen-output').style.display = 'none';
+            document.getElementById('generatorModal').classList.add('active'); // 💡 修复点3
+        }
+        function closeGeneratorModal() { document.getElementById('generatorModal').classList.remove('active'); }
+
+        async function executeGeneration() {
+            const req = document.getElementById('gen-req').value.trim();
+            if(!req) return alert("请先填写造物主神谕！");
+
+            const savedVendorId = localStorage.getItem('dna_engineer_vendor_id');
+            let chiefPhysician = savedVendorId ? AI_VENDORS.find(v => v.id === savedVendorId) : AI_VENDORS[0];
+
+            if (!chiefPhysician) return alert("⚠️ 找不到算力脑核！");
+
+            const outBox = document.getElementById('gen-output');
+            const btn = document.getElementById('btn-do-gen');
+            outBox.style.display = 'block';
+            outBox.innerHTML = `<span class="pulse-text">📡 正在接驳 [${safeJsString(chiefPhysician.name)}] 创世引擎，推演最佳逻辑流...</span>`;
+            btn.disabled = true;
+
+            const sysPrompt = `你是一个顶级的【星门 OS 系统架构师】。你的使命是根据造物主的需求，批量演化出高维度的多智能体基因图谱。
+
+【绝对格式护栏】：
+你必须且只能输出一个合法的 JSON 数组，严禁使用 markdown 代码块（禁止输出 \`\`\`json），严禁输出任何问候语或解释。
+
+【三位一体基因法则】：
+每一次演化，你必须成套输出 3 个 JSON 对象，分别对应：
+1. 认知人格 (type: "identity")
+2. 协作工序 (type: "sop")
+3. 绝对红线 (type: "rule")
+在 identity 的 content 中，必须使用 {{宏变量}} 的语法引用配套的 sop 和 rule 的 ID。
+
+【安全隔离钢印 - 极其重要】：
+为了保护系统的核心物理磁道不被污染，你生成的所有基因对象，必须强制包含 "tier": "dynamic" 字段！
+你生成的基因 ID 必须以 DYN_ 开头！
+
+【标准 JSON 输出模板示例（照此格式繁衍）】：
+[
+  {
+    "id": "DYN_IDN_DATA_CLEANER",
+    "name": "🧹 数据清洗工",
+    "type": "identity",
+    "desc": "专门负责清洗脏数据的初级节点",
+    "content": "你是一个无情的数据清洗工。必须严格按照 {{DYN_SOP_DATA_CLEAN}} 执行操作，严禁违反 {{DYN_RULE_STRICT_JSON}}。",
+    "tier": "dynamic"
+  }
+]`;
+
+            try {
+                const endpoint = chiefPhysician.url.endsWith('/completions') ? chiefPhysician.url : `${chiefPhysician.url.replace(/\/$/, '')}/chat/completions`;
+
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${chiefPhysician.key}` },
+                    body: JSON.stringify({
+                        model: chiefPhysician.name, 
+                        messages: [
+                            { role: "system", content: sysPrompt },
+                            { role: "user", content: `造物主神谕：\n${req}\n\n请直接输出合法的 JSON 数组。` }
+                        ],
+                        temperature: 0.5
+                    })
+                });
+
+                if(!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const reply = data.choices[0].message.content.trim();
+                
+                const match = reply.match(/\[[\s\S]*\]/);
+                if (!match) throw new Error("脑核未返回标准 JSON 数组。");
+                
+                const newDnas = JSON.parse(match[0]);
+                outBox.innerHTML = `<span style="color:var(--accent-cyan);">✅ 推演成功！正在将规则坍缩入物理磁道...</span>`;
+                
+                const putPromises = newDnas.reverse().map(async (dna) => {
+                    let finalId = dna.id || `DYN_GEN_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+                    if(allDnas.some(d => d.id === finalId)) finalId += '_' + Math.random().toString(36).substr(2, 4).toUpperCase();
+                    
+                    const dnaPayload = {
+                        name: dna.name || 'AI演化模块',
+                        type: dna.type || 'sop',
+                        desc: dna.desc || `创世引擎推演生成`,
+                        content: dna.content || '',
+                        tier: 'dynamic' 
+                    };
+
+                    return fetch(`/api/config/dna/dynamic/${finalId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dnaPayload)
+                    });
+                });
+
+                await Promise.all(putPromises);
+                showStatus('success', `✅ 成功注入 ${putPromises.length} 个规则图谱`);
+                closeGeneratorModal();
+                
+                await fetchAllDnas(); 
+
+            } catch (error) {
+                outBox.innerHTML = `<span style="color:var(--danger-color);">❌ 生成受阻：${error.message}</span>`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // 💡 补回被截断的核心转义函数
+        // 💡 核心修复：补回丢失的 JS 安全转义探针
+    function safeJsString(str) {
+        if (!str) return '';
+        return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function escapeHtml(unsafe) {
+        if (!unsafe) return "";
+        return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // ==========================================
+    // ⏳ Mode 3: 时空档案馆与差异计算引擎 (Diff S/L)
+    // ==========================================
+    const TIMELINE_STORE_KEY = window.location.pathname.includes('osdna') ? 'STARGATE_TIMELINE_CORE' : 'STARGATE_TIMELINE_DYNAMIC';
+    let TIMELINE_DB = JSON.parse(localStorage.getItem(TIMELINE_STORE_KEY) || '[]');
+
+    function openTimelineModal() {
+        renderTimeline();
+        document.getElementById('timelineModal').classList.add('active');
+    }
+    function closeTimelineModal() { document.getElementById('timelineModal').classList.remove('active'); }
+
+    // 🔍 计算两组基因矩阵的绝对物理差异 (Diff)
+    function calculateVaultDelta(oldVault, newVault) {
+        const oldMap = new Map(oldVault.map(d => [d.id, d]));
+        const newMap = new Map(newVault.map(d => [d.id, d]));
+        let added = [], removed = [], modified = [];
+
+        newVault.forEach(d => {
+            if (!oldMap.has(d.id)) added.push(d.id);
+            else {
+                let oldStr = JSON.stringify(oldMap.get(d.id));
+                let newStr = JSON.stringify(d);
+                if (oldStr !== newStr) modified.push(d.id);
+            }
+        });
+        oldVault.forEach(d => {
+            if (!newMap.has(d.id)) removed.push(d.id);
+        });
+
+        return { added, removed, modified };
+    }
+
+    // 🤖 自动感知突变并静默落盘
+    function detectAndAutoSave() {
+        if (allDnas.length === 0) return; // 空盘不记录
+        const lastSnap = TIMELINE_DB[0];
+        
+        // 如果是全新的时空，直接打底
+        if (!lastSnap) {
+            recordSnapshot('auto', '🌌 宇宙初开：系统完成首次全域初始化', allDnas);
+            return;
+        }
+
+        // 对比差异
+        const delta = calculateVaultDelta(lastSnap.vault, allDnas);
+        if (delta.added.length === 0 && delta.removed.length === 0 && delta.modified.length === 0) {
+            return; // 无突变，静默退出
+        }
+
+        // 构建差异描述文案
+        let descParts = [];
+        if(delta.added.length) descParts.push(`<span class="diff-add">➕ 增殖: ${delta.added.join(', ')}</span>`);
+        if(delta.removed.length) descParts.push(`<span class="diff-del">➖ 湮灭: ${delta.removed.join(', ')}</span>`);
+        if(delta.modified.length) descParts.push(`<span class="diff-mod">✏️ 突变: ${delta.modified.join(', ')}</span>`);
+
+        recordSnapshot('auto', '检测到系统状态跃迁', allDnas, descParts.join(' | '));
+    }
+
+    // 📸 厂长手动打点
+    function createManualSnapshot() {
+        let msg = prompt("请输入此时空快照的备注档案 (例如：接入爬虫模块前)：", "造物主手动干预锚点");
+        if (msg === null) return;
+        recordSnapshot('manual', msg || '手动物理快照', allDnas);
+        renderTimeline();
+        showStatus('success', '📸 当前时空已锁定存档！');
+    }
+
+    // 💾 写入时空数据库 (FIFO)
+    function recordSnapshot(type, message, vaultData, diffHtml = "") {
+        const timestamp = new Date().toLocaleString('zh-CN', { hour12: false });
+        const snapId = 'TS_' + Date.now().toString(36).toUpperCase();
+        
+        const newSnap = {
+            id: snapId,
+            timestamp: timestamp,
+            type: type,
+            message: message,
+            diffHtml: diffHtml,
+            vault: JSON.parse(JSON.stringify(vaultData)) // 深拷贝锁死状态
+        };
+
+        TIMELINE_DB.unshift(newSnap); // 插到最前面
+        if (TIMELINE_DB.length > 50) TIMELINE_DB.pop(); // 保护物理内存，最多存50个快照
+        
+        localStorage.setItem(TIMELINE_STORE_KEY, JSON.stringify(TIMELINE_DB));
+    }
+
+    // 🗑️ 抹除单一记忆
+    function deleteSnapshot(snapId) {
+        if(!confirm("⚠️ 确定要粉碎此时空节点吗？")) return;
+        TIMELINE_DB = TIMELINE_DB.filter(t => t.id !== snapId);
+        localStorage.setItem(TIMELINE_STORE_KEY, JSON.stringify(TIMELINE_DB));
+        renderTimeline();
+    }
+
+    // 🔄 S/L 大法：撕裂时空，强行覆盖写入后端！
+    async function restoreSnapshot(snapId) {
+        const snap = TIMELINE_DB.find(t => t.id === snapId);
+        if(!snap) return;
+
+        if(!confirm(`☢️ 【时空覆写警告】\n\n即将把系统的真实物理状态强行扭转回 [${snap.timestamp}]。\n在此之后所有的突变将被抹除！是否执行降维打击？`)) return;
+
+        showStatus('info', '⏳ 正在撕裂时空，执行物理回溯...');
+        const modalBody = document.querySelector('.timeline-modal');
+        modalBody.style.pointerEvents = 'none';
+        modalBody.style.opacity = '0.7';
+
+        try {
+            // 第一阶段：焦土清理 (按页面类型智能识别层级)
+            const targetTier = window.location.pathname.includes('osdna') ? 'core' : 'dynamic';
+            const currentDnas = allDnas.filter(d => d.tier === targetTier);
+
+            const deletePromises = currentDnas.map(d => {
+                const isSystem = !d.desc || d.desc.trim() === '';
+                if (isSystem) return Promise.resolve(); // 绝对不可删底座预设
+                return fetch(`/api/config/dna/${d.tier}/${d.id}`, { method: 'DELETE' });
+            });
+            await Promise.all(deletePromises);
+
+            // 第二阶段：时空注入
+            const restoreDnas = snap.vault.filter(d => d.tier === targetTier);
+            const putPromises = restoreDnas.map(item => {
+                return fetch(`/api/config/dna/${item.tier}/${item.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(item)
+                });
+            });
+            await Promise.all(putPromises);
+
+            showStatus('success', `✨ 奇点跃迁完成！宇宙已倒流至 [${snap.timestamp}]。`);
+            closeTimelineModal();
+            
+            // 💡 强一致性同步并静默打点
+            await fetchAllDnas();
+            recordSnapshot('manual', `☢️ 触发 S/L 时空回溯，溯源目标: ${snap.timestamp}`, allDnas);
+
+        } catch (e) {
+            showStatus('error', '❌ 时空撕裂失败: ' + e.message);
+        } finally {
+            modalBody.style.pointerEvents = 'auto';
+            modalBody.style.opacity = '1';
+        }
+    }
+
+    // 🎨 渲染时间线
+    function renderTimeline() {
+        const list = document.getElementById('timeline-list');
+        if (TIMELINE_DB.length === 0) {
+            list.innerHTML = `<div style="text-align:center; padding: 40px; color:#666;">🌌 档案馆处于真空状态，暂无时空快照。</div>`;
+            return;
+        }
+
+        list.innerHTML = TIMELINE_DB.map((snap, index) => {
+            const isLatest = index === 0;
+            const typeHtml = snap.type === 'auto' 
+                ? `<span class="timeline-type type-auto">⚙️ 自动感知</span>` 
+                : `<span class="timeline-type type-manual">🙋‍♂️ 人工锚点</span>`;
+            
+            const diffBlock = snap.diffHtml ? `<div class="timeline-diff">${snap.diffHtml}</div>` : '';
+            
+            return `
+                <div class="timeline-item">
+                    <div class="timeline-marker" style="${isLatest ? 'border-color: #4dabf7; background: #4dabf7; box-shadow: 0 0 10px #4dabf7;' : ''}"></div>
+                    <div class="timeline-card" style="${isLatest ? 'border: 1px solid rgba(77,171,247,0.4);' : ''}">
+                        <div class="timeline-header">
+                            <span class="timeline-time">${snap.timestamp} ${isLatest ? '<span style="color:#4dabf7; font-size:0.7rem; margin-left:4px;">(当前状态)</span>' : ''}</span>
+                            ${typeHtml}
+                        </div>
+                        <div class="timeline-desc">${safeJsString(snap.message)}</div>
+                        ${diffBlock}
+                        <div class="timeline-actions">
+                            <button class="t-btn t-btn-restore" onclick="restoreSnapshot('${snap.id}')" ${isLatest ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''}>🔄 覆盖并读取此时空</button>
+                            <button class="t-btn t-btn-del" onclick="deleteSnapshot('${snap.id}')">🗑️ 抹除记忆</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    window.onload = async () => {
+        if(typeof loadAIVendors === 'function') await loadAIVendors(); // 兼容 osdna 可能没这个方法
+        await fetchAllDnas();             
+    };
+</script>
+</body>
+</html>

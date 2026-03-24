@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🌌 神谕舱 (星门降临)</title>
+    <style>
+        /* ================= 极简自适应基础架构 ================= */
+        :root {
+            --bg-dark: #0a0a0c; --bg-panel: #161719; --text-main: #e8e8e8; --text-muted: #888;
+            --accent-color: #a8c7fa; --accent-cyan: #20c997; --danger-color: #ff6b6b; --border-color: #333;
+        }
+
+        body { 
+            margin: 0; padding: 0; background: var(--bg-dark); color: var(--text-main); 
+            font-family: system-ui, -apple-system, sans-serif; 
+            display: flex; flex-direction: column; height: 100dvh; overflow: hidden; overscroll-behavior: none; 
+        }
+        
+        /* === 绝对置顶 Header === */
+        .fixed-header { 
+            background: var(--bg-panel); padding: 0.8rem 1.2rem; border-bottom: 1px solid var(--border-color); 
+            display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 100;
+        }
+        .header-left { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
+        .icon-btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; text-decoration: none; white-space: nowrap; }
+        .icon-btn:hover { color: var(--text-main); border-color: #555; background: rgba(255,255,255,0.05); }
+        .header-title { margin: 0; font-size: 1.1rem; color: var(--text-main); letter-spacing: 1px; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+        
+        .header-right { display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none; align-items: center; }
+        .header-right::-webkit-scrollbar { display: none; }
+        .nav-btn { background: transparent; border: none; color: var(--text-muted); padding: 6px 12px; cursor: pointer; font-size: 0.9rem; transition: 0.2s; border-bottom: 2px solid transparent; text-decoration: none; white-space: nowrap; }
+        .nav-btn:hover { color: var(--text-main); }
+        .nav-btn.active { color: var(--accent-color); border-bottom-color: var(--accent-color); font-weight: bold; text-shadow: 0 0 10px rgba(168,199,250,0.3); }
+
+        /* === 核心终端区 === */
+        .main-content { 
+            flex: 1; display: flex; flex-direction: column; overflow: hidden; 
+            max-width: 1400px; margin: 0 auto; width: 100%; box-sizing: border-box; position: relative;
+        }
+        
+        /* 状态 1：神谕输入态的 HUD Terminal */
+        .terminal-container { 
+            flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; 
+        }
+        .hud-line { 
+            padding: 12px 16px; border-radius: 8px; font-family: 'Consolas', monospace; font-size: 0.95rem; line-height: 1.6; 
+            background: rgba(255,255,255,0.02); border-left: 3px solid #555; word-wrap: break-word; animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .hud-info { border-left-color: #555; color: #bbb; }
+        .hud-success { border-left-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(32, 201, 151, 0.05); }
+        .hud-error { border-left-color: var(--danger-color); color: var(--danger-color); background: rgba(255, 107, 107, 0.05); }
+        .hud-deep { border-left-color: #d8b4fe; color: #d8b4fe; background: rgba(216, 180, 254, 0.05); }
+        .hud-shallow { border-left-color: var(--accent-color); color: var(--accent-color); background: rgba(168, 199, 250, 0.05); }
+
+        /* 状态 2：上帝观战仪 UI 架构 */
+        .spectator-dashboard {
+            display: none; 
+            flex: 1; width: 100%; height: 100%; box-sizing: border-box;
+            grid-template-columns: 1fr 350px; gap: 20px; padding: 20px; overflow: hidden;
+            background: radial-gradient(circle at top right, rgba(168, 199, 250, 0.05), transparent 50%),
+                        radial-gradient(circle at bottom left, rgba(216, 180, 254, 0.05), transparent 50%);
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .panel { background: rgba(10, 10, 12, 0.8); border: 1px solid var(--border-color); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+        .panel-header-sub { padding: 12px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border-color); font-weight: bold; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center; color: var(--accent-color); letter-spacing: 1px; text-transform: uppercase;}
+        
+        /* 黑板 */
+        .board-content { flex: 1; overflow-y: auto; padding: 25px; scroll-behavior: smooth; display: flex; flex-direction: column; gap: 20px; }
+        .speech-bubble { background: #1a1b1e; border: 1px solid #333; padding: 15px 20px; border-radius: 16px 16px 16px 4px; max-width: 85%; align-self: flex-start; box-shadow: 0 4px 15px rgba(0,0,0,0.2); animation: fadeIn 0.4s ease-out; position: relative;}
+        .speech-bubble::before { content: ''; position: absolute; left: -8px; bottom: 0; width: 0; height: 0; border-bottom: 12px solid #1a1b1e; border-left: 12px solid transparent; }
+        .speech-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; border-bottom: 1px dashed #333; padding-bottom: 8px;}
+        .speaker-role { font-weight: 800; color: var(--accent-cyan); font-size: 1.05rem; }
+        .speech-round { font-size: 0.75rem; color: #666; background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;}
+        .speech-text { line-height: 1.7; font-size: 0.95rem; color: #ddd; white-space: pre-wrap; word-wrap: break-word;}
+        
+        /* 脑域与理智锁 */
+        .briefcase-content { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; background: rgba(0,0,0,0.3); }
+        .briefcase-card { background: rgba(216, 180, 254, 0.05); border: 1px solid rgba(216, 180, 254, 0.2); border-radius: 8px; padding: 12px; font-size: 0.85rem; animation: slideInRight 0.3s ease-out; transition: 0.3s;}
+        .briefcase-card.locked { border-color: rgba(255, 107, 107, 0.4); background: rgba(255, 107, 107, 0.05); }
+        .briefcase-title { font-weight: bold; color: #d8b4fe; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(216, 180, 254, 0.1); padding-bottom: 6px;}
+        .briefcase-text { color: #aaa; line-height: 1.5; white-space: pre-wrap; font-family: 'Consolas', monospace; }
+        
+        .lock-btn { background: transparent; border: 1px solid #555; color: #aaa; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 4px; }
+        .lock-btn:hover { background: rgba(255,255,255,0.1); }
+        .lock-btn.locked { color: var(--danger-color); border-color: var(--danger-color); background: rgba(255,107,107,0.1); }
+
+        /* 常驻底部输入舱 */
+        .input-area { 
+            background: var(--bg-panel); padding: 15px 20px; border-top: 1px solid var(--border-color); 
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.5); flex-shrink: 0; z-index: 10;
+        }
+        .input-wrapper { display: flex; flex-direction: column; gap: 10px; max-width: 1400px; margin: 0 auto; }
+        .controls-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        
+        .brain-select { 
+            background: var(--bg-dark); color: var(--text-main); border: 1px solid var(--border-color); 
+            padding: 10px 12px; border-radius: 6px; outline: none; min-width: 200px; font-size: 0.9rem; 
+        }
+        .omni-input { 
+            width: 100%; background: var(--bg-dark); border: 1px dashed var(--border-color); color: var(--text-main); 
+            padding: 12px 15px; border-radius: 8px; font-size: 1rem; resize: none; outline: none; 
+            transition: all 0.3s; box-sizing: border-box; line-height: 1.5; min-height: 80px; max-height: 200px;
+        }
+        .omni-input:focus { border-color: var(--accent-color); background: #000; box-shadow: 0 0 15px rgba(168,199,250,0.1) inset; }
+        
+        .btn { 
+            padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; border: none; 
+            font-size: 0.95rem; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; 
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-fire { background: var(--accent-color); color: #000; flex: 1; min-width: 150px; }
+        .btn-fire:hover { filter: brightness(1.1); }
+        .btn-abort { background: rgba(255,107,107,0.1); border: 1px solid var(--danger-color); color: var(--danger-color); flex: 1; min-width: 150px; display: none; }
+        .btn-abort:hover { background: rgba(255,107,107,0.2); }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        @media(max-width: 1024px) {
+            .spectator-dashboard { grid-template-columns: 1fr; overflow-y: auto; display: flex; flex-direction: column; }
+            .panel { flex: none; height: auto; min-height: 400px; }
+        }
+        @media(max-width: 768px) {
+            .fixed-header { flex-direction: column; align-items: flex-start; gap: 10px; height: auto; padding: 10px 15px;}
+            .header-right { width: 100%; justify-content: space-between; overflow-x: auto; padding-bottom: 5px; }
+            .controls-row { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="fixed-header">
+        <div class="header-left">
+            <a href="/" class="icon-btn" title="返回主脑大厅">❮ Stargate OS</a>
+            <h2 class="header-title"><span style="color: var(--accent-cyan);">*</span> 神谕舱 <span id="headerStatus" style="font-size:0.8rem; color:#888; font-weight:normal; margin-left:5px;"></span></h2>
+        </div>
+        <div class="header-right">
+            <a href="/x.html" class="nav-btn active">1 神谕舱</a>
+            <a href="/xx.html" class="nav-btn">2 档案馆</a>
+            <a href="/osdna.html" class="nav-btn">3 基因库</a>
+            <a href="/xxx.html" class="nav-btn">4 星门中枢</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+
+        <div id="inputModeView" style="display:flex; flex-direction:column; height:100%; width:100%;">
+            <div id="hudTerminal" class="terminal-container">
+                <div class="hud-line hud-info">
+                    > [System] V35 量子连续态进化引擎已激活...<br>
+                    > [System] 提示：输入 [深呼吸] 强制重铸时空；直接对话将触发 [浅呼吸] 延续历史。<br>
+                    > [System] 厂长，请在下方降下神谕。
+                </div>
+            </div>
+        </div>
+
+        <div id="spectatorModeView" class="spectator-dashboard">
+            <div class="panel">
+                <div class="panel-header-sub">
+                    <span>📡 星门圆桌黑板 (Continuous Debate)</span>
+                    <span id="boardStatus" style="font-size:0.75rem; color:#888; font-weight:normal;">等待脉冲同步...</span>
+                </div>
+                <div class="board-content" id="boardContent">
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header-sub" style="color: #d8b4fe;">
+                    <span>🧠 私有脑域 (Rationality Lock)</span>
+                </div>
+                <div class="briefcase-content" id="briefcaseContent">
+                </div>
+            </div>
+        </div>
+
+    </div> 
+    
+    <div id="inputAreaBox" class="input-area">
+        <div class="input-wrapper">
+            <div style="display: flex; gap: 10px; width: 100%;">
+                <select id="brainSelect" style="background:#000; color:var(--accent-cyan); border:1px solid #333; padding:8px; border-radius:6px; font-family:inherit; outline:none; font-weight:bold; width: 100%;">
+                    <option value="">🚀 [系统自动路由] 寻找最佳空闲机床</option>
+                </select>
+            </div>
+            
+            <textarea id="omniInput" class="omni-input" placeholder="输入神谕 (Enter换行，Ctrl+Enter发送)...&#10;💡 [深呼吸] 开辟新星门；💡 [浅呼吸] 继续当前对话。&#10;您可以在右侧给特工【上锁】，被锁死的特工将保持绝对理智，免疫本次修改。"></textarea>
+            
+            <div class="controls-row">
+                <button id="fireBtn" class="btn btn-fire" onclick="sendOmniBreath()">⚡ 降下神谕 (持续对话)</button>
+                <button id="abortBtn" class="btn btn-abort" onclick="abortStargate()">🛑 紧急切断算力</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================= 全局量子状态 =================
+        let currentMeetingId = null;
+        let autoSyncTimer = null;
+        let lockedAgents = new Set(); // 💡 厂长专属：被锁死理智的特工白名单
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const idParam = urlParams.get('id');
+
+            initRegistry(); // 加载脑核
+
+            if (idParam) {
+                switchToSpectatorMode(idParam);
+            }
+        });
+
+        // ================= 🧭 视界切换逻辑 =================
+        function switchToSpectatorMode(meetingId) {
+            currentMeetingId = meetingId;
+            document.getElementById('inputModeView').style.display = 'none';
+            document.getElementById('spectatorModeView').style.display = 'grid'; 
+            document.getElementById('headerStatus').innerText = `| 活跃星门: ${meetingId}`;
+            
+            // 无刷新修改 URL 历史，保证分享的 URL 永远是对的
+            window.history.pushState(null, '', `/x.html?id=${meetingId}`);
+
+            fetchMeetingData();
+            if(!autoSyncTimer) autoSyncTimer = setInterval(fetchMeetingData, 3000); 
+        }
+
+        // ================= 👁️ 数据抓取与生命体解析 =================
+        async function fetchMeetingData() {
+            if (!currentMeetingId) return;
+            const boardStatus = document.getElementById('boardStatus');
+            
+            try {
+                boardStatus.innerText = "同步中...";
+                const res = await fetch(`/api/stargate/archives/${currentMeetingId}`);
+                if (!res.ok) throw new Error("档案可能已被销毁");
+                
+                const responseData = await res.json();
+                const meetingDetails = responseData.data || {};
+                
+                renderPublicBoard(meetingDetails.center_board);
+                renderBriefcases(meetingDetails.briefcases);
+                
+                const timeStr = new Date().toLocaleTimeString('en-US', {hour12: false});
+                boardStatus.innerText = `最后同步: ${timeStr}`;
+            } catch (e) {
+                boardStatus.innerText = "⚠️ 失去连接";
+                boardStatus.style.color = "var(--danger-color)";
+            }
+        }
+
+        function renderPublicBoard(boardText) {
+            const boardEl = document.getElementById('boardContent');
+            if (!boardText || boardText.trim() === "") {
+                boardEl.innerHTML = `<div style="text-align:center; color:#666; margin-top:50px;">圆桌静默中...</div>`;
+                return;
+            }
+
+            const regex = /\*\*\[(.*?)\]\*\* \((Round \d+)\):[\r\n]+([\s\S]*?)(?=\*\*\[|$)/g;
+            let match, html = '', hasMatch = false;
+
+            while ((match = regex.exec(boardText)) !== null) {
+                hasMatch = true;
+                const role = match[1], round = match[2];
+                let text = escapeHtml(match[3].trim()).replace(/\n/g, '<br>');
+
+                html += `
+                    <div class="speech-bubble">
+                        <div class="speech-header"><span class="speaker-role">${escapeHtml(role)}</span><span class="speech-round">${round}</span></div>
+                        <div class="speech-text">${text}</div>
+                    </div>`;
+            }
+
+            if (!hasMatch) {
+                let cleanText = boardText.replace(/# 星门会议纪要.*?\n\n/g, ''); 
+                html = `<div class="speech-bubble" style="max-width:100%;"><div class="speech-text">${escapeHtml(cleanText).replace(/\n/g, '<br>')}</div></div>`;
+            }
+
+            if (boardEl.innerHTML !== html) {
+                boardEl.innerHTML = html;
+                boardEl.scrollTop = boardEl.scrollHeight;
+            }
+        }
+
+        function renderBriefcases(briefcasesObj) {
+            const briefEl = document.getElementById('briefcaseContent');
+            if (!briefcasesObj || Object.keys(briefcasesObj).length === 0) return;
+
+            let html = '';
+            for (const [aid, content] of Object.entries(briefcasesObj)) {
+                const shortId = aid.replace('_briefcase.md', '').split('_').pop() || aid;
+                const safeContent = escapeHtml(content).replace(/\n/g, '<br>');
+                
+                // 💡 理智锁渲染
+                const isLocked = lockedAgents.has(aid);
+                const lockBtnClass = isLocked ? "lock-btn locked" : "lock-btn";
+                const lockBtnText = isLocked ? "🔒 绝对理智" : "🔓 开放进化";
+                const cardClass = isLocked ? "briefcase-card locked" : "briefcase-card";
+
+                html += `
+                    <div class="${cardClass}">
+                        <div class="briefcase-title">
+                            <span style="display:flex; align-items:center; gap:6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                                Agent_${escapeHtml(shortId)}
+                            </span>
+                            <button class="${lockBtnClass}" onclick="toggleAgentLock('${aid}')">${lockBtnText}</button>
+                        </div>
+                        <div class="briefcase-text">${safeContent}</div>
+                    </div>`;
+            }
+
+            if (briefEl.innerHTML !== html) briefEl.innerHTML = html;
+        }
+
+        // 💡 厂长级微操：特工理智切换
+        window.toggleAgentLock = function(aid) {
+            if (lockedAgents.has(aid)) {
+                lockedAgents.delete(aid);
+            } else {
+                lockedAgents.add(aid);
+            }
+            // 立即强制重新渲染一次右侧面板以更新UI
+            fetchMeetingData();
+        };
+
+        // ================= ⌨️ 持续进化调度流 (Orchestrator) =================
+        const omniInput = document.getElementById('omniInput');
+        omniInput.addEventListener('input', function() {
+            this.style.height = '80px';
+            this.style.height = (this.scrollHeight > 200 ? 200 : this.scrollHeight) + 'px';
+        });
+
+        omniInput.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); sendOmniBreath(); }
+        });
+
+        async function initRegistry() {
+            try {
+                const res = await fetch('/api/config/ai');
+                const aiData = await res.json();
+                let vendors = [];
+                if (aiData.categories) aiData.categories.forEach(cat => { if(cat.nodes) vendors.push(...cat.nodes); });
+                else if (aiData.vendors) vendors = aiData.vendors;
+                
+                const selectEl = document.getElementById('brainSelect');
+                let optionsHtml = `<option value="">🚀 [系统自动路由] 寻找最佳空闲机床</option>`;
+                
+                if (vendors.length > 0) {
+                    vendors.forEach(v => {
+                        if (v.enabled !== false) {
+                            const modeIcon = v.exec_mode === 'cli' ? '💻 CLI' : '🌐 API';
+                            optionsHtml += `<option value="${v.id}">[${modeIcon}] ${escapeHtml(v.name)}</option>`;
+                        }
+                    });
+                }
+                selectEl.innerHTML = optionsHtml;
+            } catch (e) { console.error("脑核加载失败"); }
+        }
+
+        // 🚀 核心大动脉：前端自主决策深浅呼吸
+        async function sendOmniBreath() {
+            const command = omniInput.value.trim();
+            if (!command) return;
+
+            const vendorId = document.getElementById('brainSelect').value;
+            const fireBtn = document.getElementById('fireBtn');
+            const abortBtn = document.getElementById('abortBtn');
+            
+            fireBtn.disabled = true; fireBtn.innerText = "⏳ 时空折叠中..."; omniInput.disabled = true;
+            
+            // 逻辑树判定：如果指令包含 [深呼吸]，或当前根本没有活跃会议，则走“重铸”分支。
+            const isDeep = command.includes('[深呼吸]') || !currentMeetingId;
+            
+            try {
+                let targetMeetingId = currentMeetingId;
+                let payloadTopic = command;
+
+                if (isDeep) {
+                    // 🌪️ 【深呼吸：摧毁重建】
+                    targetMeetingId = `SG_DEEP_${new Date().getTime().toString().slice(-6)}`;
+                    
+                    let savedLineup = JSON.parse(localStorage.getItem('stargate_lineup') || '[]');
+                    if (savedLineup.length < 2) {
+                        savedLineup = [
+                            { id: `agent_A${Date.now().toString().slice(-4)}`, role: "正方主导", vendor_id: vendorId, injected_dna: [] },
+                            { id: `agent_B${Date.now().toString().slice(-4)}`, role: "反方制衡", vendor_id: vendorId, injected_dna: [] }
+                        ];
+                        localStorage.setItem('stargate_lineup', JSON.stringify(savedLineup));
+                    }
+                    
+                    await executeStargatePulse(targetMeetingId, payloadTopic, 3, savedLineup);
+                    switchToSpectatorMode(targetMeetingId); // 原地跃迁，不弹新窗口！
+
+                } else {
+                    // 🌬️ 【浅呼吸：持续对话与基因微调】
+                    // 1. 创建衍生基因
+                    const ruleId = `DYN_RULE_${Date.now().toString(36).toUpperCase()}`;
+                    const newDna = {
+                        id: ruleId, name: "持续对话注入指令", type: "rule", desc: command.substring(0, 20), content: command, tier: "dynamic"
+                    };
+                    await fetch('/api/config/dna', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({vault: [newDna]}) });
+
+                    // 2. 读取特工阵列，仅对“未上锁”的特工注射基因
+                    let savedLineup = JSON.parse(localStorage.getItem('stargate_lineup') || '[]');
+                    let mutatedCount = 0;
+                    savedLineup.forEach(agent => {
+                        // 注意：aid 在 briefcases 里是文件名，通常跟 agent.id 对应
+                        if (!lockedAgents.has(`${targetMeetingId}_${agent.id}`) && !lockedAgents.has(agent.id)) {
+                            if(!agent.injected_dna) agent.injected_dna = [];
+                            agent.injected_dna.push(ruleId);
+                            mutatedCount++;
+                            
+                            // 💡 物理层修复：将 id 组装为后端严格要求的 agent_id
+                            const recruitPayload = {
+                                agent_id: agent.id,
+                                role: agent.role,
+                                vendor_id: agent.vendor_id,
+                                injected_dna: agent.injected_dna
+                            };
+                            
+                            // 静默同步给后端特工档案
+                            fetch('/api/stargate/agent/recruit', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(recruitPayload) });
+                        }
+                    });
+                    localStorage.setItem('stargate_lineup', JSON.stringify(savedLineup));
+
+                    // 3. 追加发起新回合
+                    payloadTopic = `[造物主介入]：${command}`;
+                    await executeStargatePulse(targetMeetingId, payloadTopic, 2, savedLineup); // 延续2回合
+                }
+
+                fireBtn.style.display = 'none'; abortBtn.style.display = 'inline-flex';
+
+            } catch (e) {
+                alert(`❌ 发射失败: ${e.message}`);
+                fireBtn.style.display = 'inline-flex'; abortBtn.style.display = 'none';
+            } finally {
+                fireBtn.disabled = false; fireBtn.innerText = "⚡ 降下神谕 (持续对话)";
+                omniInput.disabled = false; omniInput.value = ''; omniInput.style.height = '80px'; omniInput.focus();
+            }
+        }
+
+        // 统一物理发车接口
+        async function executeStargatePulse(meetingId, topic, rounds, agentsConfig) {
+            const res = await fetch('/api/stargate/start', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ meeting_id: meetingId, topic: topic, rounds: rounds, agents_config: agentsConfig })
+            });
+            if (!res.ok) throw new Error("底层大动脉断开连接");
+        }
+
+        // ==========================================
+        // 🚨 V50.0 紧急熔断：软硬双轨同步斩杀
+        // ==========================================
+        async function abortStargate() {
+            if (!currentMeetingId) return;
+            const abortBtn = document.getElementById('abortBtn');
+            const fireBtn = document.getElementById('fireBtn');
+            
+            abortBtn.innerText = '☠️ 熔断中...'; 
+            abortBtn.disabled = true;
+            try {
+                // 1. 软刹车：通知主控节点清理数据库并阻断 API 轮询
+                fetch(`/api/stargate/abort/${currentMeetingId}`, { method: 'POST' }).catch(e=>{});
+
+                // 2. 💥 硬刹车：直接击穿二厂沙盒，物理级全域拔管！
+                const radarHost = window.location.hostname;
+                const killUrl = window.location.protocol === 'https:' 
+                    ? `/api/radar/kill?task=${currentMeetingId}` 
+                    : `http://${radarHost}:8999/kill?task=${currentMeetingId}`;
+                
+                fetch(killUrl).catch(e=>{});
+
+                setTimeout(() => {
+                    abortBtn.style.display = 'none'; 
+                    abortBtn.disabled = false; 
+                    abortBtn.innerText = '🛑 紧急切断算力';
+                    fireBtn.style.display = 'inline-flex';
+                    
+                    // 3. 黑板视觉反馈：强行插入系统级警告
+                    const boardEl = document.getElementById('boardContent');
+                    if (boardEl) {
+                        boardEl.innerHTML += `<div class="speech-bubble" style="max-width:100%; border-color: var(--danger-color); background: rgba(255, 107, 107, 0.05);"><div class="speech-text" style="color: var(--danger-color); font-weight: bold;">[系统强制介入]：已向底层沙盒投掷物理斩杀指令，星门圆桌被强行解散，特工躯壳已销毁。</div></div>`;
+                        boardEl.scrollTop = boardEl.scrollHeight;
+                    }
+                }, 1500);
+            } catch(e) {
+                abortBtn.disabled = false; 
+                abortBtn.innerText = '🛑 重试切断';
+            }
+        }
+
+        function escapeHtml(unsafe) {
+            if(!unsafe) return "";
+            return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

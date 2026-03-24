@@ -1,0 +1,282 @@
+:root {
+    --bg-dark: #131314; --bg-panel: #1e1f20;
+    --text-main: #e3e3e3; --text-muted: #c4c7c5;
+    --accent-color: #a8c7fa; --border-color: #333639;
+}
+
+body, html {
+    margin: 0; padding: 0; height: 100dvh; 
+    background-color: var(--bg-dark); color: var(--text-main);
+    font-family: system-ui, -apple-system, sans-serif; overflow: hidden; 
+}
+svg { width: 1.2em; height: 1.2em; vertical-align: middle; }
+
+.app-container { display: grid; grid-template-columns: 260px minmax(0, 1fr) 280px; width: 100vw; max-width: 100%; height: 100dvh; overflow: hidden; transition: grid-template-columns 0.3s ease; }
+.mobile-header { display: none; }
+.overlay { display: none; }
+
+.sidebar { background-color: var(--bg-panel); padding: 1.5rem; display: flex; flex-direction: column; overflow-y: auto;}
+.sidebar-left { border-right: 1px solid var(--border-color); }
+.sidebar-right { border-left: 1px solid var(--border-color); }
+
+/* ======== 左侧样式 ======== */
+.logo { font-size: 1.2rem; font-weight: bold; color: var(--accent-color); display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;}
+.sidebar-actions { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem; }
+.action-btn { display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1rem; border-radius: 2rem; border: none; font-size: 0.95rem; font-weight: 500; cursor: pointer; transition: 0.2s; }
+.new-chat-btn { background-color: #2a2b32; color: var(--text-main); }
+.new-chat-btn:hover { background-color: #333639; }
+.my-designs-btn { background-color: rgba(168, 199, 250, 0.1); color: var(--accent-color); }
+.menu-title { font-size: 0.8rem; color: #7a7a7a; margin-bottom: 0.5rem; padding-left: 0.5rem;}
+.menu-list { list-style: none; padding: 0; margin: 0; }
+.history-item { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.5rem 0.6rem 1rem; border-radius: 0.5rem; cursor: pointer; color: var(--text-muted); transition: 0.2s; margin-bottom: 0.2rem; position: relative;}
+.history-item:hover, .history-item.active { background-color: #333639; color: var(--text-main); }
+.item-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.95rem;}
+.more-btn { background: transparent; border: none; color: var(--text-muted); padding: 0.2rem; cursor: pointer; border-radius: 50%; opacity: 0; transition: 0.2s;}
+.history-item:hover .more-btn { opacity: 1; color: var(--text-main); }
+.item-menu { position: absolute; right: 1rem; top: 2.2rem; background-color: #2a2b32; border: 1px solid var(--border-color); border-radius: 0.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 100; display: none; min-width: 100px; overflow: hidden; }
+.item-menu.show { display: block; }
+.menu-action { padding: 0.6rem 1rem; font-size: 0.85rem; color: var(--text-main); cursor: pointer; }
+.menu-action:hover { background-color: #3a3b40; }
+.menu-action.delete { color: #ff6b6b; }
+
+/* ======== 右侧样式 (配置与标签页) ======== */
+.panel-header { font-weight: bold; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem;}
+.config-card { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem;}
+.config-card label { font-size: 0.85rem; color: var(--text-muted); }
+.dark-select { background-color: #131314; color: white; border: 1px solid var(--border-color); padding: 0.8rem; border-radius: 0.4rem; outline: none; font-size: 1rem;}
+.test-btn { background-color: #333639; color: white; border: none; padding: 1rem; border-radius: 0.4rem; cursor: pointer; transition: 0.2s; font-size: 1rem;}
+
+.tab-btn { flex: 1; text-align: center; padding: 0.8rem; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; transition: 0.2s; font-size: 0.95rem;}
+.tab-btn.active { color: var(--accent-color); border-bottom-color: var(--accent-color); font-weight: bold; }
+
+/* ======== 画廊样式 ======== */
+.asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.8rem; padding: 0.5rem; }
+.asset-item { position: relative; aspect-ratio: 1; border-radius: 0.5rem; overflow: hidden; background: #2a2b32; cursor: pointer; border: 1px solid var(--border-color); }
+.asset-item img, .asset-item video { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s;}
+.asset-item:hover img { transform: scale(1.05); }
+.asset-badge { position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.7); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; backdrop-filter: blur(4px);}
+
+/* ======== 全局媒体查看器 ======== */
+.media-viewer { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.95); z-index: 9999; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+.media-viewer.show { opacity: 1; pointer-events: auto; }
+.close-viewer { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.1); border: none; color: white; padding: 10px; border-radius: 50%; cursor: pointer; z-index: 10000; }
+.close-viewer:hover { background: rgba(255,255,255,0.2); }
+.media-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.media-content img, .media-content video { max-width: 95%; max-height: 95%; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); transform-origin: center center; }
+
+/* ======== 主舞台与对话记录 ======== */
+.main-stage { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; min-width: 0; }
+.chat-area { flex: 1; overflow-y: auto; padding: 1.5rem 10% 120px 10%; display: flex; flex-direction: column; gap: 1.5rem; scroll-behavior: smooth; overflow-x: hidden; min-width: 0; }
+.message-row { display: flex; gap: 1rem; max-width: 100%; min-width: 0; }
+.row-user { flex-direction: row-reverse; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ai-avatar { background-color: transparent !important; box-shadow: none !important; font-size: 1.6rem; color: var(--text-main); }
+.user-avatar { display: none !important; }
+
+/* 💡 绝对边界约束：防止内容撑爆屏幕 */
+.message-content { 
+    padding: 0.5rem 0; 
+    line-height: 1.6; 
+    font-size: 1rem; 
+    white-space: pre-wrap; 
+    overflow-wrap: break-word; 
+    word-break: break-word;
+    max-width: 100%;
+    min-width: 0; 
+    box-sizing: border-box;
+}
+.message-content * { max-width: 100%; box-sizing: border-box; }
+
+/* ==================================================
+   🧠 Google Gemini 像素级心智可视面板 (V21 封固版)
+   ================================================== */
+/* 1. 全局消息 Bubble 基因对齐 (AI 回复的底色) */
+.row-ai .message-content {
+    background: #1a1b1e; /* 深度黑灰 */
+    color: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    font-family: 'Open Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    border: 1px solid #2a2b2f;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.row-user .message-content { 
+    background-color: #2a2b32; 
+    padding: 12px 18px; 
+    border-radius: 20px; 
+    max-width: 60%; 
+    width: fit-content; 
+    margin-left: auto; 
+}
+
+/* 2. 可折叠细节面板容器 */
+.gemini-thoughts-container {
+    margin: 0 0 16px 0;
+    border-radius: 12px;
+    background: #131314; /* 思考区的背景更黑 */
+    border: 1px solid #333639;
+    overflow: hidden;
+    font-size: 0.85rem;
+}
+/* 3. 幽蓝色 summary 栏 */
+.gemini-thoughts-summary {
+    padding: 12px 16px;
+    color: #c4c7c5; /* 幽蓝色二级文字 */
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 500;
+    outline: none;
+    transition: background 0.2s;
+    list-style: none; /* 🔪 核心防线 1：彻底抹杀火狐/旧版内核的原生黑三角 */
+}
+.gemini-thoughts-summary:hover { background: #1a1b1e; color: #fff; }
+.gemini-thoughts-summary::-webkit-details-marker { display: none; } /* 🔪 核心防线 2：抹杀 Webkit 内核原生三角 */
+
+.gemini-thoughts-summary-label { 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    font-weight: bold; 
+}
+.gemini-thoughts-summary-label::before { content: '🧠'; font-size: 0.9rem; }
+
+.gemini-thoughts-summary-timer { 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    font-family: monospace; 
+    flex-shrink: 0; /* 🔪 核心防线 3：防挤压装甲，绝对不允许被左侧文字顶出屏幕 */
+    min-width: 80px; /* 给右侧预留安全宽度 */
+    justify-content: flex-end;
+}
+
+/* 🔪 核心防线 4：SVG 专属完美居中与旋转力学 */
+.gemini-thoughts-icon { 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    color: #c4c7c5; 
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+}
+
+/* 展开状态下 SVG 箭头的丝滑 180 度翻转 */
+.gemini-thoughts-container[open] .gemini-thoughts-icon { 
+    transform: rotate(-180deg); 
+}
+
+/* 5. 展开后的心智内容区 */
+.gemini-thoughts-content {
+    padding: 16px;
+    border-top: 1px solid #2a2b2f;
+    background: #0a0a0c;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 20px; /* 步骤之间的间距 */
+    position: relative;
+}
+/* 6. 每一个步骤 (Step) 的物理构筑 */
+.gemini-thought-step { display: flex; gap: 16px; position: relative; }
+.gemini-thought-step:not(:last-child)::after {
+    content: ''; position: absolute; left: 10px; top: 24px; bottom: -20px; width: 2px; background: #333639; z-index: 1;
+}
+.gemini-step-number {
+    width: 22px; height: 22px; background: #1a1b1e; border: 1px solid #444; border-radius: 50%;
+    display: flex; justify-content: center; align-items: center; font-size: 0.75rem; color: #c4c7c5; font-weight: bold; flex-shrink: 0; position: relative; z-index: 2;
+}
+.gemini-step-detail { display: flex; flex-direction: column; gap: 6px; padding-top: 2px; }
+.gemini-step-title { color: #e3e3e3; font-weight: bold; font-size: 0.9rem; }
+.gemini-step-timestamp { color: #888; font-size: 0.85rem; font-family: monospace; white-space: pre-wrap; line-height: 1.5; }
+
+/* 代码块防爆屏 */
+pre, code { white-space: pre-wrap !important; word-wrap: break-word !important; overflow-x: auto; max-width: 100%; }
+
+/* 💡 动态卡片防坍塌约束 */
+.ai-interaction-card, .workflow-approval-card {
+    background: rgba(168, 199, 250, 0.08); border: 1px solid var(--accent-color); border-radius: 12px;
+    padding: 16px; margin: 12px 0; box-sizing: border-box; width: 100%; display: flex; flex-direction: column; gap: 12px; overflow: hidden;
+}
+.card-tag { font-size: 0.7rem; color: var(--accent-color); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+.card-body { font-size: 0.9rem; color: #eee; line-height: 1.5; }
+.card-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px; }
+.card-btn { flex: 1 1 auto; min-width: 120px; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 0.85rem; text-align: center; }
+.card-btn.primary { background: linear-gradient(135deg, #a8c7fa 0%, #d8b4fe 100%); color: #111; }
+.card-btn.secondary { background: rgba(255,255,255,0.05); color: #aaa; border: 1px solid #444; }
+.card-btn:hover { filter: brightness(1.2); transform: translateY(-2px); }
+
+/* ======== 可拖拽输入框核心样式 ======== */
+.draggable-wrapper {
+    position: absolute; bottom: 20px; left: 10%; right: 10%;
+    z-index: 50; display: flex; flex-direction: column; align-items: center; touch-action: none;
+}
+.drag-handle { width: 100%; height: 24px; display: flex; justify-content: center; align-items: center; cursor: grab; border-radius: 10px 10px 0 0; }
+.drag-handle:active { cursor: grabbing; }
+.drag-bar { width: 40px; height: 4px; background-color: #555; border-radius: 2px; transition: 0.2s;}
+.drag-handle:hover .drag-bar { background-color: var(--accent-color); }
+
+.input-box {
+    width: 100%; background-color: rgba(30, 31, 32, 0.95); border-radius: 1.5rem;
+    display: flex; align-items: flex-end; padding: 0.5rem; gap: 0.5rem; 
+    border: 1px solid var(--border-color); backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.input-box textarea { flex: 1; background: transparent; border: none; color: var(--text-main); font-size: 1rem; outline: none; padding: 0.6rem 0; max-height: 150px; resize: none; overflow-y: auto; }
+.icon-btn, .send-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.6rem; border-radius: 50%; margin-bottom: 0.2rem;}
+.send-btn { background-color: rgba(168, 199, 250, 0.1); color: var(--accent-color); flex-shrink: 0; }
+
+/* 💡 状态胶囊防挤压与跑马灯动画 */
+@keyframes badge-text-scroll {
+    0%, 15% { transform: translateX(0); }
+    85%, 100% { transform: translateX(calc(-100% + 80px)); }
+}
+.inline-factory-badge {
+    display: none; align-items: center; gap: 6px; background: rgba(255, 183, 77, 0.15); color: #ffb74d; border: 1px solid rgba(255,183,77,0.4); padding: 4px 12px; border-radius: 16px; font-size: 0.75rem; font-weight: bold; flex-shrink: 0; max-width: 55vw; overflow: hidden;
+}
+.inline-factory-badge.factory-active { display: flex; animation: pulse-queue 2s infinite; }
+.inline-factory-badge .close-btn { color: #ffb74d; cursor: pointer; font-size: 1rem; margin-left: 2px; flex-shrink: 0; }
+.inline-factory-badge .close-btn:hover { color: #fff; }
+.badge-scroll-wrapper { overflow: hidden; white-space: nowrap; flex: 1; mask-image: linear-gradient(to right, #000 80%, transparent 100%); -webkit-mask-image: linear-gradient(to right, #000 80%, transparent 100%); }
+#ui-mode-text { display: inline-block; white-space: nowrap; animation: badge-text-scroll 4s linear infinite alternate; }
+
+/* V16.0 全息双轨视界 CSS */
+#holographic-preview-pane { position: fixed; top: 0; left: 0; bottom: 0; width: 50vw; background: #f4f6f8; z-index: 2000; transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 20px 0 50px rgba(0,0,0,0.6); display: flex; flex-direction: column; border-right: 1px solid var(--accent-color); }
+#holographic-preview-pane.open { transform: translateX(0); }
+.holo-header { padding: 12px 20px; background: #fff; border-bottom: 2px solid var(--accent-color); display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: #1a73e8; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.holo-close-btn { background: rgba(255, 107, 107, 0.1); color: #ff6b6b; border: 1px solid #ff6b6b; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: 0.2s; }
+.holo-close-btn:hover { background: #ff6b6b; color: #fff; }
+.holo-iframe { flex: 1; width: 100%; border: none; background: #fff; }
+
+/* 用户消息操作区 */
+.user-msg-actions { display: flex; align-items: center; gap: 8px; opacity: 0; visibility: hidden; transition: all 0.2s ease-in-out; margin-right: 12px; }
+.row-user:hover .user-msg-actions, .user-msg-actions.show-mobile { opacity: 1; visibility: visible; }
+.user-action-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s; }
+.user-action-btn:hover { background-color: var(--bg-panel); color: var(--text-main); }
+
+/* 手机端适配 */
+@media (max-width: 900px) {
+    .app-container { display: flex; flex-direction: column; }
+    .mobile-header { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1rem; background-color: var(--bg-panel); border-bottom: 1px solid var(--border-color); z-index: 10; flex-shrink: 0;}
+    .header-title { font-weight: bold; color: var(--accent-color); }
+    .desktop-only { display: none; }
+    .more-btn { opacity: 1; }
+    .chat-area { padding-left: 1rem; padding-right: 1rem; }
+    .draggable-wrapper { left: 1rem; right: 1rem; bottom: 10px; }
+    
+    .sidebar { position: fixed; top: 0; bottom: 0; width: 280px; z-index: 1000; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: none; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+    .sidebar-left { left: 0; transform: translateX(-100%); }
+    .sidebar-left.open { transform: translateX(0); }
+    .sidebar-right { right: 0; transform: translateX(100%); }
+    .sidebar-right.open { transform: translateX(0); }
+    
+    .overlay { display: block; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 900; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .overlay.active { opacity: 1; pointer-events: auto; }
+    
+    #holographic-preview-pane { width: 100vw; }
+}
+
+.workflow-status-overlay, .cutting-indicator, .loading-dots, #workflow-hud-v6 { display: none !important; visibility: hidden !important; height: 0 !important; padding: 0 !important; }
+#chat-box { scroll-behavior: auto !important; }

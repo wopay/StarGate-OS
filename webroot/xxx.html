@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>⚙️ 星门 OS 全景中枢</title>
+    <style>
+        /* === 极简工业风变量 (全站像素级对齐) === */
+        :root {
+            --bg-dark: #0a0a0c; --bg-panel: #161719; --text-main: #e8e8e8; --text-muted: #888;
+            --accent-color: #a8c7fa; --accent-cyan: #20c997; --danger-color: #ff6b6b; --border-color: #333;
+        }
+
+        html, body { margin: 0; padding: 0; background: var(--bg-dark); color: var(--text-main); font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; min-height: 100vh; }
+
+        /* === 🚀 绝对置顶 Header === */
+        .fixed-header { 
+            position: fixed; top: 0; left: 0; right: 0; height: 60px;
+            background: var(--bg-panel); padding: 0.8rem 1.2rem; border-bottom: 1px solid var(--border-color); 
+            display: flex; justify-content: space-between; align-items: center; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.5); box-sizing: border-box;
+        }
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        .icon-btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 0.85rem; }
+        .icon-btn:hover { background: rgba(255,255,255,0.05); color: var(--text-main); }
+        .header-title { margin: 0; font-size: 1.1rem; letter-spacing: 1px; color: var(--text-main); }
+
+        .header-right { display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none;}
+        .header-right::-webkit-scrollbar { display: none; }
+        .nav-btn { background: transparent; border: none; color: var(--text-muted); padding: 6px 12px; cursor: pointer; font-size: 0.9rem; text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap;}
+        .nav-btn:hover { color: var(--text-main); }
+        .nav-btn.active { color: var(--accent-color); border-bottom-color: var(--accent-color); font-weight: bold; }
+
+        /* === 主布局区 === */
+        .dashboard-container { max-width: 1400px; margin: 0 auto; padding: 80px 20px 40px 20px; display: grid; grid-template-columns: 400px 1fr; gap: 25px; box-sizing: border-box; }
+
+        .panel-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .panel-title { font-size: 0.95rem; font-weight: bold; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid #222; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+
+        /* === 后端大动脉状态监控 (Heartbeat) === */
+        .health-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .health-item { background: #0a0a0c; border: 1px solid #222; padding: 10px; border-radius: 6px; display: flex; flex-direction: column; gap: 4px; }
+        .health-label { font-size: 0.7rem; color: #666; }
+        .health-status { font-size: 0.85rem; font-family: monospace; display: flex; align-items: center; gap: 6px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #444; }
+        .status-online .status-dot { background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan); }
+
+        /* === 物理控制组件 === */
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        .input-group label { font-size: 0.8rem; color: #888; font-weight: bold; }
+        .input-group input, .input-group select, .input-group textarea { 
+            background: #0a0a0c; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 6px; outline: none; font-family: inherit; font-size: 0.9rem; box-sizing: border-box; width: 100%;
+        }
+        .input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: var(--accent-color); }
+        .input-group textarea { resize: vertical; min-height: 60px; line-height: 1.5; }
+
+        .control-btn { 
+            padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; transition: 0.2s; 
+            display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.95rem;
+        }
+        .btn-primary { background: rgba(168, 199, 250, 0.1); color: var(--accent-color); border: 1px solid rgba(168,199,250,0.3); }
+        .btn-primary:hover { background: rgba(168, 199, 250, 0.2); transform: translateY(-1px); }
+        .btn-ignite { background: linear-gradient(135deg, #a8c7fa 0%, #d8b4fe 100%); color: #000; font-size: 1rem; padding: 15px; }
+        .btn-ignite:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(168,199,250,0.3); }
+
+        /* === 🧬 新型触控基因选择器 (Gene Selector) === */
+        .gene-tags { display: flex; flex-wrap: wrap; gap: 6px; min-height: 38px; border: 1px dashed #333; padding: 8px; border-radius: 6px; background: #0a0a0c; align-items: center; cursor: text; }
+        .gene-tag { background: rgba(168,199,250,0.15); color: #a8c7fa; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(168,199,250,0.3); animation: fadeIn 0.2s; }
+        .gene-tag .remove-btn { cursor: pointer; color: #ff6b6b; font-weight: bold; font-size: 1rem; line-height: 1; padding-left: 4px; border-left: 1px solid rgba(168,199,250,0.2); }
+        .gene-tag .remove-btn:hover { color: #ff4444; }
+        .gene-dropdown-wrap { position: relative; margin-top: 5px; }
+        .gene-search { width: 100%; background: #111; border: 1px solid #444; color: #fff; padding: 8px 10px; border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; margin-top: 5px; display: none; }
+        .gene-search:focus { border-color: var(--accent-color); background: #000; }
+        .gene-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #161719; border: 1px solid #444; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.8); margin-top: 4px; display: none; flex-direction: column; }
+        .gene-option { padding: 10px 12px; font-size: 0.85rem; color: #ccc; cursor: pointer; border-bottom: 1px solid #222; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .gene-option:hover { background: rgba(168,199,250,0.15); color: #fff; }
+        .gene-opt-title { font-weight: bold; color: #e8e8e8; }
+        .gene-opt-desc { color: #888; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+        /* === 生命体矩阵 === */
+        .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; align-items: start; }
+        .agent-item { background: #0a0a0c; border: 1px solid #333; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; transition: 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .agent-item:hover { border-color: #555; }
+        .agent-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #333; padding-bottom: 10px; }
+        .agent-index { font-weight: bold; color: #d8b4fe; font-size: 1.1rem; font-family: monospace; }
+        
+        /* 架构师图纸 */
+        .api-blueprint { display: flex; flex-direction: column; gap: 12px; font-family: 'Consolas', monospace; font-size: 0.85rem; }
+        .api-block { background: #0a0a0c; border: 1px solid #222; border-radius: 6px; padding: 12px; border-left: 3px solid var(--border-color); }
+        .api-block.get { border-left-color: #4CAF50; }
+        .api-block.post { border-left-color: #2196F3; }
+        .api-block.put { border-left-color: #FF9800; }
+        .api-block.delete { border-left-color: var(--danger-color); }
+        .api-method { font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-right: 8px; font-size: 0.75rem; }
+        .api-block.get .api-method { background: rgba(76, 175, 80, 0.15); color: #4CAF50; }
+        .api-block.post .api-method { background: rgba(33, 150, 243, 0.15); color: #2196F3; }
+        .api-block.put .api-method { background: rgba(255, 152, 0, 0.15); color: #FF9800; }
+        .api-block.delete .api-method { background: rgba(244, 67, 54, 0.15); color: var(--danger-color); }
+
+        /* === 响应式调整 === */
+        @media (max-width: 1024px) {
+            .dashboard-container { grid-template-columns: 1fr; padding-top: 100px; }
+            .fixed-header { height: auto; flex-direction: column; align-items: flex-start; gap: 10px; padding: 10px 15px; }
+        }
+
+        #statusOverlay { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 30px; font-weight: bold; z-index: 2000; display: none; background: #161719; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        #statusOverlay.show { display: flex; }
+    </style>
+</head>
+<body>
+
+    <div class="fixed-header">
+        <div class="header-left">
+            <a href="/" class="icon-btn">❮ Stargate OS</a>
+            <h2 class="header-title"><span style="color: var(--accent-cyan);">*</span> 全景中枢</h2>
+        </div>
+        <div class="header-right">
+            <a href="/x.html" class="nav-btn">1 神谕舱</a>
+            <a href="/xx.html" class="nav-btn">2 档案馆</a>
+            <a href="/osdna.html" class="nav-btn">3 基因库</a>
+            <a href="/xxx.html" class="nav-btn active">4 星门中枢</a>
+        </div>
+    </div>
+
+    <div id="statusOverlay"><span id="statusText"></span></div>
+
+    <div class="dashboard-container">
+        
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="panel-card">
+                <div class="panel-title">💓 系统心脏 (大动脉自检)</div>
+                <div class="health-grid">
+                    <div class="health-item" id="heart-ai">
+                        <span class="health-label">算力集群 (AI Core)</span>
+                        <div class="health-status"><span class="status-dot"></span><span>检测中...</span></div>
+                    </div>
+                    <div class="health-item" id="heart-dna">
+                        <span class="health-label">基因全息 (DNA Index)</span>
+                        <div class="health-status"><span class="status-dot"></span><span>检测中...</span></div>
+                    </div>
+                    <div class="health-item" id="heart-sg">
+                        <span class="health-label">星门引擎 (Stargate)</span>
+                        <div class="health-status"><span class="status-dot"></span><span>检测中...</span></div>
+                    </div>
+                    <div class="health-item" id="heart-arch">
+                        <span class="health-label">历史档案 (Archives)</span>
+                        <div class="health-status"><span class="status-dot"></span><span>检测中...</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-card" style="border-color: #d8b4fe;">
+                <div class="panel-title" style="color: #d8b4fe;">🧙‍♂️ 架构师造物引擎 (Auto Forge)</div>
+                <div class="input-group">
+                    <label style="color: #d8b4fe;">自然语言自进化裂变</label>
+                    <textarea id="architectPrompt" placeholder="描述您需要的数字生命体特性...&#10;系统将自动调用大模型推演其 Identity、SOP 和 Rule 基因，并自动为您组装一名新特工！" style="min-height: 80px;"></textarea>
+                </div>
+                <button class="control-btn" id="forgeAutoBtn" style="background: rgba(216, 180, 254, 0.1); color: #d8b4fe; border: 1px solid rgba(216, 180, 254, 0.3);" onclick="forgeAutoAgent()">✨ 启动裂变 (Auto Forge)</button>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-title">🛠️ 物理基石烙印 (Manual DNA)</div>
+                <div class="input-group">
+                    <input type="text" id="newDnaId" placeholder="基因代号 (例: SYS_CORE_RULE)">
+                    <input type="text" id="newDnaName" placeholder="易读名称">
+                    <select id="newDnaType">
+                        <option value="rule">🔴 绝对红线 (Rule)</option>
+                        <option value="sop">⚙️ 工序大纲 (SOP)</option>
+                        <option value="identity">👤 认知人格 (Identity)</option>
+                    </select>
+                    <textarea id="newDnaContent" placeholder="在此刻入不可篡改的底层法则..."></textarea>
+                    <button class="control-btn btn-primary" onclick="forgeManualCoreDna()">✨ 烙印至 Core 扇区</button>
+                </div>
+            </div>
+
+            <div class="panel-card" style="border-color: var(--accent-color);">
+                <div class="panel-title" style="color: var(--accent-color);">🚀 物理强行启动 (Ignite)</div>
+                <div class="input-group">
+                    <label>强制议题 (Topic)</label>
+                    <textarea id="meetingTopic" placeholder="绕过神谕，在此强制确立会议方向..."></textarea>
+                </div>
+                <div class="input-group">
+                    <label>强制轮回数</label>
+                    <input type="number" id="meetingRounds" value="3" min="1">
+                </div>
+                <button class="control-btn btn-ignite" onclick="igniteStargateManual()">🔥 (传统模式) 强制点爆星门</button>
+                <button id="abortBtn" class="control-btn" style="background:rgba(255,107,107,0.1); color:var(--danger-color); border:1px solid var(--danger-color); display:none;" onclick="abortStargate()">🛑 紧急切断物理算力</button>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="panel-card">
+                <div class="panel-title">
+                    <span>👥 生命体物理矩阵 (Agent Matrix)</span>
+                    <button class="control-btn btn-primary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="triggerAgentRecruit('')">➕ 征召虚空生命体</button>
+                </div>
+                <div id="agentListContainer" class="agent-grid">
+                    </div>
+            </div>
+
+            <div class="panel-card" style="border-color: var(--accent-cyan);">
+                <div class="panel-title" style="color: var(--accent-cyan);">📜 架构师图纸：全域 API 物理拓扑 (V40)</div>
+                <div class="api-blueprint">
+                    <div class="api-block post">
+                        <div><span class="api-method">POST</span><span class="api-url">/api/stargate/dna/forge</span></div>
+                        <div class="api-desc">🧙‍♂️ 架构师造物引擎：传入 prompt 自动调用大模型生成三位一体基因，并自动计算 Token 载荷落盘。</div>
+                        <div class="api-payload">Payload: { "prompt": str, "vendor_id": str }</div>
+                    </div>
+                    
+                    <div class="api-block post">
+                        <div><span class="api-method">POST</span><span class="api-url">/api/stargate/start</span></div>
+                        <div class="api-desc">🚀 星门点火：原生物理级引擎，强行切入多智能体轮舞。前端 x.html 已全面接驳此通道保障无损落盘。</div>
+                        <div class="api-payload">Payload: { "meeting_id": str, "topic": str, "rounds": int, "agents_config": list }</div>
+                    </div>
+
+                    <div class="api-block post">
+                        <div><span class="api-method">POST</span><span class="api-url">/api/stargate/abort/{meeting_id}</span></div>
+                        <div class="api-desc">🛑 紧急熔断：发送物理脉冲，强行锁死指定星门轮回，切断算力呼吸。</div>
+                    </div>
+                    
+                    <div class="api-block get">
+                        <div><span class="api-method">GET</span><span class="api-url">/api/stargate/archives/{meeting_id}</span></div>
+                        <div class="api-desc">📡 阿卡什读取：穿透物理扇区，拉取会议黑板与特工公文包，用于上帝视角实况渲染。</div>
+                    </div>
+                    
+                    <div class="api-block post">
+                        <div><span class="api-method">POST</span><span class="api-url">/api/stargate/agent/recruit</span></div>
+                        <div class="api-desc">👥 实体同步：特工配置档案独立物理落盘与动态热更。</div>
+                        <div class="api-payload">Payload: { "agent_id": str, "role": str, "vendor_id": str, "injected_dna": list }</div>
+                    </div>
+                    
+                    <div class="api-block put">
+                        <div><span class="api-method">PUT</span><span class="api-url">/api/config/dna/{tier}/{dna_id}</span></div>
+                        <div class="api-desc">✍️ 进化覆写：V40 绝杀大动脉。强制单点穿透碎片化目录，实现特定法则基因无损进化。</div>
+                        <div class="api-payload">Payload: { "name": str, "desc": str, "content": str, "type": str }</div>
+                    </div>
+                    
+                    <div class="api-block delete">
+                        <div><span class="api-method">DELETE</span><span class="api-url">/api/config/dna/{tier}/{dna_id}</span></div>
+                        <div class="api-desc">🔪 物理抹杀：强行从磁盘湮灭冗余法则。对 SYS_ 系统预设法则具有最高防爆隔离。</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let availableVendors = [];
+        let globalDnaVault = [];
+        let currentMeetingId = null;
+
+        // ================= 状态与自检 =================
+        function showStatus(message, isError=false) {
+            const el = document.getElementById('statusOverlay');
+            const text = document.getElementById('statusText');
+            text.innerHTML = isError ? `❌ ${message}` : `✅ ${message}`;
+            el.style.borderColor = isError ? 'var(--danger-color)' : 'var(--accent-cyan)';
+            el.style.color = isError ? 'var(--danger-color)' : 'var(--accent-cyan)';
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 3000);
+        }
+
+        async function checkHeartbeat() {
+            const check = async (id, url) => {
+                const el = document.getElementById(id);
+                try {
+                    const res = await fetch(url);
+                    if(res.ok) {
+                        el.classList.add('status-online');
+                        el.querySelector('.health-status span:last-child').innerText = '连接通畅';
+                    } else throw '';
+                } catch(e) {
+                    el.classList.remove('status-online');
+                    el.querySelector('.health-status span:last-child').innerText = '物理阻断';
+                }
+            };
+            check('heart-ai', '/api/config/ai');
+            check('heart-dna', '/api/config/dna_index');
+            check('heart-sg', '/api/stargate/archives');
+            check('heart-arch', '/api/stargate/archives');
+        }
+
+        async function refreshGlobalVault() {
+            try {
+                const res = await fetch('/api/config/dna_index');
+                if (res.ok) {
+                    const data = await res.json();
+                    globalDnaVault = data.index || [];
+                }
+            } catch(e) {}
+        }
+
+        async function initRegistry() {
+            await checkHeartbeat();
+            try {
+                const [aiRes, dnaRes] = await Promise.all([ fetch('/api/config/ai'), fetch('/api/config/dna_index') ]);
+                const aiData = await aiRes.json();
+                if (aiData.categories) aiData.categories.forEach(c => { if(c.nodes) availableVendors.push(...c.nodes); });
+                else if (aiData.vendors) availableVendors = aiData.vendors;
+
+                if (dnaRes.ok) {
+                    const dnaData = await dnaRes.json();
+                    globalDnaVault = dnaData.index || [];
+                }
+                
+                renderAllAgents();
+                
+            } catch (e) { console.error("脉冲初始化失败", e); }
+        }
+
+        // ================= 辅助防御：XSS 物理装甲 =================
+        function escapeHtml(unsafe) {
+            if (!unsafe) return "";
+            return String(unsafe)
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        // ================= 🤖 架构师造物引擎 (Auto Forge 绝杀闭环版) =================
+        async function forgeAutoAgent() {
+            const prompt = document.getElementById('architectPrompt').value.trim();
+            if (!prompt) return showStatus("请输入造物需求", true);
+            
+            const vendorId = availableVendors[0]?.id; 
+            if(!vendorId) return showStatus("算力池为空", true);
+
+            const btn = document.getElementById('forgeAutoBtn');
+            btn.innerHTML = "⏳ 正在连接高维空间裂变基因..."; 
+            btn.disabled = true;
+
+            try {
+                // 1. 调用炼金炉大模型生成
+                const res = await fetch('/api/stargate/dna/forge', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({prompt: prompt, vendor_id: vendorId})
+                });
+                
+                if (!res.ok) throw new Error("造物引擎内部熔断");
+                const data = await res.json();
+                
+                let dnas = [];
+                try { dnas = JSON.parse(data.data); } catch(e) { throw new Error("大模型未能返回合法的 JSON 格式"); }
+
+                // 2. 💡【绝杀修复 & 自动检斤】使用万能的 PUT 循环落盘，计算算力，并绝对不能漏掉 type！
+                for (const dna of dnas) {
+                    const tier = dna.tier || 'dynamic';
+                    
+                    // [全自动检斤机]：拦截并计算 Token 焊死在摘要中
+                    const estTokens = Math.ceil((dna.content || '').length * 1.5);
+                    let currentDesc = dna.desc || "";
+                    currentDesc = currentDesc.replace(/\s*\[算力消耗:\s*~\d+\s*Tokens\]/g, '').trim();
+                    const finalDesc = currentDesc ? `${currentDesc} [算力消耗: ~${estTokens} Tokens]` : `[算力消耗: ~${estTokens} Tokens]`;
+
+                    await fetch(`/api/config/dna/${tier}/${dna.id}`, {
+                        method: 'PUT', // 强制走 PUT 大动脉
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: dna.name,
+                            desc: finalDesc,   // 写入带算力的摘要
+                            content: dna.content,
+                            type: dna.type     // 🩸 补齐灵魂类型，绝不丢失！
+                        })
+                    });
+                }
+                
+                await refreshGlobalVault();
+
+                // 3. 💡【修复弱智命名】智能提取大模型赋予的真正身份名字
+                const identityGene = dnas.find(d => d.type === 'identity');
+                const roleName = identityGene ? identityGene.name : prompt.substring(0, 8) + " (自进化)";
+
+                // 4. 自动分配特工实体并绑定基因
+                const agentId = `agent_${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+                const injectedDnas = dnas.map(d => d.id);
+                
+                await fetch('/api/stargate/agent/recruit', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({agent_id: agentId, role: roleName, vendor_id: vendorId, injected_dna: injectedDnas})
+                });
+                
+                let savedLineup = JSON.parse(localStorage.getItem('stargate_lineup') || '[]');
+                savedLineup.push({ id: agentId, role: roleName, vendor_id: vendorId, injected_dna: injectedDnas });
+                localStorage.setItem('stargate_lineup', JSON.stringify(savedLineup));
+                
+                renderAllAgents();
+                document.getElementById('architectPrompt').value = '';
+                showStatus("✨ 造物成功！全新生命体已就位！");
+
+            } catch(e) {
+                showStatus(e.message, true);
+            } finally {
+                btn.innerHTML = "✨ 启动裂变 (Auto Forge)"; 
+                btn.disabled = false;
+            }
+        }
+
+        // ================= 🧬 触控基因选择器 (Gene Selector) =================
+        function renderAllAgents() {
+            document.getElementById('agentListContainer').innerHTML = '';
+            const savedLineup = JSON.parse(localStorage.getItem('stargate_lineup') || '[]');
+            if (savedLineup.length === 0) {
+                document.getElementById('agentListContainer').innerHTML = '<div class="empty-state" style="grid-column: 1 / -1; padding: 40px; text-align: center; color: #666; border: 1px dashed #333; border-radius: 8px;">⚠️ 矩阵虚空：请手工强制插入特工。</div>';
+                return;
+            }
+            savedLineup.forEach(a => renderAgentCard(a.id, a.role, a.vendor_id, a.injected_dna || []));
+        }
+
+        function renderAgentCard(agentId, role, vendorId, dnas) {
+            const vendorOptions = availableVendors.map(v => `<option value="${v.id}" ${v.id === vendorId ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('');
+            
+            let tagsHtml = '';
+            dnas.forEach(dnaId => {
+                const dna = globalDnaVault.find(d => d.id === dnaId);
+                if(dna) {
+                    const icon = dna.tier === 'core' ? '💎' : '✨';
+                    tagsHtml += `<div class="gene-tag" data-id="${dna.id}">${icon} ${escapeHtml(dna.name)} <span class="remove-btn" onclick="removeGene('${agentId}', '${dna.id}', event)">×</span></div>`;
+                }
+            });
+
+            let optionsHtml = '';
+            globalDnaVault.forEach(dna => {
+                const isSelected = (dnas || []).includes(dna.id);
+                const icon = dna.tier === 'core' ? '💎' : '✨';
+                const safeName = escapeHtml(dna.name || dna.id);
+                const safeDesc = escapeHtml(dna.desc || '系统底层预设，无潜意识摘要');
+                optionsHtml += `
+                    <div class="gene-option" data-id="${dna.id}" style="display: ${isSelected ? 'none' : 'flex'}" onclick="addGene('${agentId}', '${dna.id}')">
+                        <div style="flex-shrink:0;">${icon}</div>
+                        <div style="min-width:0; display:flex; flex-direction:column; gap:2px;">
+                            <div class="gene-opt-title">${safeName}</div>
+                            <div class="gene-opt-desc">${safeDesc}</div>
+                        </div>
+                    </div>`;
+            });
+
+            const card = `
+                <div class="agent-item" id="card_${agentId}">
+                    <div class="agent-header">
+                        <span class="agent-index">${agentId}</span>
+                        <button onclick="removeAgentCard('${agentId}')" style="background:none; border:none; color:var(--danger-color); cursor:pointer; font-weight:bold;">抹杀 ×</button>
+                    </div>
+                    <div class="input-group">
+                        <label>身份 (Role)</label>
+                        <input type="text" class="agent-role" value="${escapeHtml(role)}" onchange="syncAgentBasic('${agentId}')">
+                    </div>
+                    <div class="input-group">
+                        <label>脑核 (Vendor)</label>
+                        <select class="agent-vendor" onchange="syncAgentBasic('${agentId}')">${vendorOptions}</select>
+                    </div>
+                    <div class="input-group">
+                        <label>🧬 挂载基因 (点击搜索与装配)</label>
+                        <div class="gene-dropdown-wrap" id="geneWrap_${agentId}">
+                            <div class="gene-tags" id="geneTags_${agentId}" onclick="toggleGeneSearch('${agentId}')">
+                                ${tagsHtml}
+                            </div>
+                            <input type="text" class="gene-search" id="geneSearch_${agentId}" placeholder="输入名称搜索基因..." onkeyup="filterGenes('${agentId}')">
+                            <div class="gene-dropdown" id="geneDropdown_${agentId}">
+                                ${optionsHtml}
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" class="agent-id" value="${agentId}">
+                </div>
+            `;
+            document.getElementById('agentListContainer').insertAdjacentHTML('beforeend', card);
+        }
+
+        // --- 触控搜搜与装配核心逻辑 ---
+        window.toggleGeneSearch = function(agentId) {
+            const search = document.getElementById(`geneSearch_${agentId}`);
+            const dropdown = document.getElementById(`geneDropdown_${agentId}`);
+            if(search.style.display === 'block') {
+                search.style.display = 'none'; dropdown.style.display = 'none';
+            } else {
+                document.querySelectorAll('.gene-search').forEach(el => el.style.display = 'none');
+                document.querySelectorAll('.gene-dropdown').forEach(el => el.style.display = 'none');
+                search.style.display = 'block'; dropdown.style.display = 'flex';
+                search.focus(); search.value = ''; filterGenes(agentId);
+            }
+        };
+
+        window.filterGenes = function(agentId) {
+            const query = document.getElementById(`geneSearch_${agentId}`).value.toLowerCase();
+            const options = document.getElementById(`geneDropdown_${agentId}`).querySelectorAll('.gene-option');
+            options.forEach(opt => {
+                const isSelected = document.querySelector(`#geneTags_${agentId} .gene-tag[data-id="${opt.dataset.id}"]`);
+                if(isSelected) { opt.style.display = 'none'; return; }
+                const text = opt.innerText.toLowerCase();
+                opt.style.display = text.includes(query) ? 'flex' : 'none';
+            });
+        };
+
+        window.addGene = function(agentId, dnaId) {
+            let savedLineup = JSON.parse(localStorage.getItem('stargate_lineup') || '[]');
+            let agent = savedLineup.find(a => a.id === agentId);
+            if(agent && !agent.injected_dna.includes(dnaId)) {
+                agent.injected_dna.push(dnaId);
+                localStorage.setItem('stargate_lineup', JSON.stringify(savedLineup));
+                
+                // 💡 绝杀修复 422：拼装后端 Pydantic 渴望的 payload
+                const payload = { agent_id: agent.id, role: agent.role, vendor_id: agent.vendor_id, injected_dna: agent.injected_dna };
+                fetch('/api/stargate/agent/recruit', { 
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) 
+                }).then(() => renderAllAgents());
+            }
+        };
+
+        window.removeGene = function(agentId, dnaId, event) {
+            event.stopPropagation(); 
+            let savedLineup = JSON.parse(localStorage.getItem('stargate_lineup') || '[]');
+            let agent = savedLineup.find(a => a.id === agentId);
+            if(agent) {
+                agent.injected_dna = agent.injected_dna.filter(id => id !== dnaId);
+                localStorage.setItem('stargate_lineup', JSON.stringify(savedLineup));
+                
+                // 💡 绝杀修复 422：拼装后端 Pydantic 渴望的 payload
+                const payload = { agent_id: agent.id, role: agent.role, vendor_id: agent.vendor_id, injected_dna: agent.injected_dna };
+                fetch('/api/stargate/agent/recruit', { 
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) 
+                }).then(() => renderAllAgents());
+            }
+        };
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.gene-dropdown-wrap')) {
+                document.querySelectorAll('.gene-search').forEach(el => el.style.display = 'none');
+                document.querySelectorAll('.gene-dropdown').forEach(el => el.style.display = 'none');
+            }
+        });
+
+        // --- 属性极简同步与生命体管控 ---
+        async function syncAgentBasic(id) {
+            let savedLineup = JSON.parse(localStorage.getItem('stargate_lineup') || '[]');
+            let agent = savedLineup.find(a => a.id === id);
+            if (!agent) return;
+            const el = document.getElementById(`card_${id}`);
+            if(!el) return; 
+            
+            agent.role = el.querySelector('.agent-role').value;
+            agent.vendor_id = el.querySelector('.agent-vendor').value;
+            
+            localStorage.setItem('stargate_lineup', JSON.stringify(savedLineup));
+            
+            const payload = {
+                agent_id: agent.id,
+                role: agent.role,
+                vendor_id: agent.vendor_id,
+                injected_dna: agent.injected_dna || []
+            };
+
+            await fetch('/api/stargate/agent/recruit', { 
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) 
+            });
+        }
+
+        async function triggerAgentRecruit(defaultRole = "") {
+            const agentId = `agent_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+            const role = defaultRole || '虚空生命体';
+            const vendorId = availableVendors[0]?.id || null;
+            let savedLineup = JSON.parse(localStorage.getItem('stargate_lineup') || '[]');
+            const newAgent = { id: agentId, role: role, vendor_id: vendorId, injected_dna: [] };
+            savedLineup.push(newAgent);
+            localStorage.setItem('stargate_lineup', JSON.stringify(savedLineup));
+            
+            await fetch('/api/stargate/agent/recruit', { 
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ agent_id: agentId, role: role, vendor_id: vendorId, injected_dna: [] }) 
+            });
+            renderAllAgents();
+        }
+
+        function removeAgentCard(id) {
+            if(!confirm("确定物理抹杀该生命体？")) return;
+            let savedLineup = JSON.parse(localStorage.getItem('stargate_lineup') || '[]');
+            savedLineup = savedLineup.filter(a => a.id !== id);
+            localStorage.setItem('stargate_lineup', JSON.stringify(savedLineup));
+            renderAllAgents();
+        }
+
+        // ================= 其他控制逻辑 =================
+        async function forgeManualCoreDna() {
+            const dnaId = document.getElementById('newDnaId').value.trim();
+            const name = document.getElementById('newDnaName').value.trim();
+            const type = document.getElementById('newDnaType').value;
+            const content = document.getElementById('newDnaContent').value.trim();
+            
+            if(!dnaId || !content) return showStatus("代号与内容不能为空", true);
+            
+            // 💡 [全自动检斤机]：手动锻造也带上重量
+            const estTokens = Math.ceil(content.length * 1.5);
+            const finalDesc = `手动基石烙印 [算力消耗: ~${estTokens} Tokens]`;
+
+            // 💡 抛弃旧版 POST，改用 V35 全能神钥 PUT
+            const res = await fetch(`/api/config/dna/core/${dnaId}`, { 
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ 
+                    name: name, 
+                    desc: finalDesc, 
+                    type: type, 
+                    content: content 
+                }) 
+            });
+            
+            if(res.ok) { 
+                showStatus("基石已物理烙印！"); 
+                setTimeout(()=>location.reload(), 1000); 
+            } else {
+                showStatus("烙印失败，后端大动脉阻断", true);
+            }
+        }
+
+        async function igniteStargateManual() {
+            const topic = document.getElementById('meetingTopic').value;
+            if(!topic) return showStatus("请确立议题", true);
+            let savedLineup = JSON.parse(localStorage.getItem('stargate_lineup') || '[]');
+            if(savedLineup.length < 2) return showStatus("至少需要两名生命体", true);
+
+            const meetingId = `SG_MANUAL_${Date.now().toString().slice(-6)}`;
+            currentMeetingId = meetingId;
+            const res = await fetch('/api/stargate/start', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ meeting_id: meetingId, topic, rounds: parseInt(document.getElementById('meetingRounds').value), agents_config: savedLineup })
+            });
+
+            if(res.ok) {
+                document.getElementById('abortBtn').style.display = 'flex';
+                showStatus(`星门已强行点火，快照 ID: ${meetingId}`);
+            }
+        }
+
+        async function abortStargate() {
+            if(!confirm("确定切断算力呼吸？")) return;
+            await fetch(`/api/stargate/abort/${currentMeetingId}`, { method: 'POST' });
+            document.getElementById('abortBtn').style.display = 'none';
+            showStatus("算力已成功物理熔断。");
+        }
+
+        window.addEventListener('DOMContentLoaded', initRegistry);
+    </script>
+</body>
+</html>

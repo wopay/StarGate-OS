@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI 智能管家</title>
+    <link rel="stylesheet" href="/style.css?v=999">
+    
+    <link rel="stylesheet" href="/pannellum/atom-one-dark.min.css">
+    <script src="/pannellum/highlight.min.js"></script>
+    <script src="/pannellum/marked.min.js"></script>
+    <script src="/pannellum/plus.js?v=999"></script>
+    
+    <style>
+        /* 增加一个呼吸灯动画供排队提示使用 */
+        @keyframes pulse-queue {
+            0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(255, 152, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); }
+        }
+        
+        /* 新增：蓝紫色高亮呼吸灯，专供后台巡航使用 */
+        @keyframes pulse-cruise {
+            0% { box-shadow: 0 0 0 0 rgba(168, 199, 250, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(168, 199, 250, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(168, 199, 250, 0); }
+        }
+
+        /* 👇 新增：AI 消息底部的高级操作栏与 TTS 按钮 */
+        .msg-action-bar { display: flex; gap: 10px; margin-top: 10px; justify-content: flex-end; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px; }
+        .msg-action-btn { background: transparent; border: 1px solid #444; color: #aaa; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 6px; font-weight: bold;}
+        .msg-action-btn:hover { background: rgba(255,255,255,0.1); color: #eee; border-color: #666; }
+        .msg-action-btn.playing { color: #20c997; border-color: #20c997; background: rgba(32,201,151,0.1); box-shadow: 0 0 10px rgba(32,201,151,0.2); }
+
+        select#domain-selector, select#simple-wf-selector {
+            -webkit-appearance: none; -moz-appearance: none; appearance: none; text-align: center;
+        }
+        select#domain-selector option, select#simple-wf-selector option {
+            background: var(--bg-panel, #1e1f20); color: #fff; padding: 10px;
+        }
+
+        /* 👇 Gemini 风格极致优雅输入框 */
+        .gemini-input-container {
+            width: 100%;
+            background-color: var(--bg-panel);
+            border-radius: 26px;
+            display: flex;
+            flex-direction: column;
+            padding: 12px 16px 8px 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+        .gemini-input-container:focus-within {
+            background-color: #242528;
+            border-color: #555;
+        }
+        
+        .gemini-textarea {
+            width: 100%; background: transparent; border: none;
+            color: var(--text-main, #eee); font-size: 1rem;
+            outline: none; resize: none; max-height: 200px;
+            line-height: 1.5; padding: 0; margin-bottom: 8px;
+            overflow-y: auto;
+        }
+        .gemini-textarea::placeholder { color: #666; }
+
+        .gemini-bottom-bar {
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .gemini-left-actions, .gemini-right-actions {
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .g-icon-btn {
+            background: transparent; border: none; color: #aaa;
+            width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .g-icon-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+        .iq-selector-wrapper { position: relative; display: flex; align-items: center;}
+        .iq-select {
+            appearance: none; -webkit-appearance: none;
+            background: transparent; border: none; color: #aaa;
+            font-size: 0.9rem; font-weight: bold; cursor: pointer;
+            padding: 6px 24px 6px 14px; border-radius: 20px; transition: 0.2s;
+            outline: none;
+        }
+        .iq-select:hover { background: rgba(255,255,255,0.08); color: #fff; }
+        .iq-select option { background: var(--bg-panel); color: #fff; }
+        .iq-arrow {
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+            pointer-events: none; font-size: 0.6rem; color: #aaa;
+        }
+
+        .g-send-btn {
+            background: #e3e3e3; color: #111; border: none;
+            width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .g-send-btn:hover { filter: brightness(0.8); transform: scale(1.05); }
+        .g-send-btn:active { transform: scale(0.95); }
+
+        /* 流水线挂载状态胶囊 */
+        .inline-factory-badge {
+            display: none; align-items: center; gap: 6px;
+            background: rgba(255, 183, 77, 0.15); color: #ffb74d;
+            border: 1px solid rgba(255,183,77,0.4); padding: 4px 12px;
+            border-radius: 16px; font-size: 0.75rem; font-weight: bold;
+        }
+        .inline-factory-badge.factory-active { display: flex; animation: pulse-queue 2s infinite; }
+        .inline-factory-badge .close-btn { color: #ffb74d; cursor: pointer; font-size: 1rem; margin-left: 2px; }
+        .inline-factory-badge .close-btn:hover { color: #fff; }
+
+        /* 👑 升级版管家控制台样式 */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(5px);
+            display: flex; justify-content: center; align-items: center; z-index: 9999;
+        }
+        .modal-content {
+            background: var(--bg-panel, #1e1f20); border: 1px solid #444;
+            padding: 24px; border-radius: 16px; width: 340px; text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        }
+        .modal-content h3 { margin-top: 0; color: #eee; font-size: 1.2rem; font-weight: bold; text-align: left; padding-bottom: 12px; border-bottom: 1px solid #333;}
+        
+        .console-section { background: rgba(0,0,0,0.2); padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #333; text-align: left; }
+        .console-section h4 { margin: 0 0 12px 0; color: #a8c7fa; font-size: 0.85rem; font-weight: normal; text-transform: uppercase; letter-spacing: 1px;}
+        .console-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 0.9rem; color: #ccc; }
+        .console-row:last-child { margin-bottom: 0; }
+        
+        .console-select { background: #111; border: 1px solid #555; color: #eee; padding: 4px 8px; border-radius: 6px; outline: none; font-size: 0.8rem;}
+        .console-btn { background: #333; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.8rem; }
+        .console-btn:hover { background: #555; }
+        
+        .mode-btn { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #555; background: #2a2b2d; color: #ccc; cursor: pointer; font-size: 0.85rem; transition: 0.2s; font-weight: bold; text-align: center;}
+        .mode-btn.active { background: #d8b4fe; color: #111; border-color: #d8b4fe; }
+
+        /* TTS 切换开关 */
+        .toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: #4caf50; }
+        input:checked + .slider:before { transform: translateX(16px); }
+
+        /* 模式隐藏逻辑 */
+        body.simple-mode #btn-toggle-right { display: none !important; }
+        body.simple-mode #sidebar-right { display: none !important; }
+        body.simple-mode #dev-header-area { display: none !important; }
+        body.simple-mode #simple-header-area { display: flex !important; }
+        body:not(.simple-mode) #dev-header-area { display: flex !important; }
+        body:not(.simple-mode) #simple-header-area { display: none !important; }
+
+        @media (min-width: 901px) {
+            body.simple-mode .app-container { grid-template-columns: 260px minmax(0, 1fr) 0px !important; }
+        }
+        
+        /* 💡 保底防御：防止未引用的卡片样式崩塌 */
+        .ai-interaction-card { box-sizing: border-box; width: 100%; overflow: hidden; }
+        .ai-interaction-card .card-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+    </style>
+
+    <script>
+        window.addEventListener('error', function(e) {
+            if (e.message && (e.message.includes('id of null') || e.message.includes('fetch'))) {
+                console.error("🚨 [Watchdog] 捕获到前端死锁或网络断裂:", e.message);
+                setTimeout(() => {
+                    if (!document.querySelector('.message-row') && !document.getElementById('chat-input')) {
+                        console.warn("🕵️ [Watchdog] 确认系统卡死，正在强制清空导致死锁的缓存并重启...");
+                        localStorage.removeItem('factory_last_domain');
+                        localStorage.removeItem('last_valid_chat_id');
+                        location.href = '/';
+                    }
+                }, 3000);
+            }
+        });
+    </script>
+</head>
+<body class="simple-mode">
+
+    <textarea id="ai-gen-system-prompt" style="display:none;">
+【最高工作流锻造法则】
+你是一个高级系统架构师（管家）。请根据厂长（用户）的需求，动态生成一个最优的工作流执行计划。
+
+【执行逻辑：1.回答汇报 -> 2.写工作流草案 -> 3.提交系统挂载】
+请你先用自然语言向厂长简单汇报你的设计思路和节点分配计划。
+随后，你必须在回答的最后部分，输出且仅输出一个合法的 JSON 代码块 (```json ... ```)，系统底层会自动将其转化为厂长的审批卡片。
+
+【💥 致命错误防御守则 (严格遵守)】
+1. 算力指派不能空：每个节点的 `selectedAIs` 数组必须填入系统分配给你的真实【模型ID】！绝对不能留空（不能是 []）！
+2. 指令不能空：`instruction` 必须详细写明该节点具体要执行的提示词！
+3. 防并发雪崩：如果要顺次执行重型任务，必须给后续节点设置递增的 `delay_seconds`！例如：节点1延时0，节点2延时15，节点3延时30... 错峰执行才能保护系统！
+
+必须绝对符合以下工作流骨架：
+{
+  "name": "自动生成的工作流名称",
+  "nodes": [
+    {
+      "id": "唯一节点ID (如 n_1)",
+      "type": "节点类型 (主干必须填 major, 向下并行的分支必须填 sub)",
+      "title": "节点短名称",
+      "instruction": "详细的执行指令，绝不可为空",
+      "workMode": "recognition 或 creation",
+      "inputType": "nature_chat", 
+      "deliverType": "text_comm",
+      "delay_seconds": 0, 
+      "requiresReview": false,
+      "is_dispatcher": false,
+      "is_loop_trigger": false,
+      "selectedAIs": ["此处必须填入模型ID"] 
+    }
+  ],
+  "edges": [
+    { "source": "源节点ID", "target": "目标节点ID", "type": "major 或 sub" }
+  ]
+}
+注意：请绝对不要把属性包裹在 "data" 里面！全部放在 node 的同级根目录下！
+    </textarea>
+
+    <div id="mode-modal" class="modal-overlay" style="display:none;" onclick="if(event.target === this) this.style.display='none'">
+        <div class="modal-content" style="width: 90%; max-width: 420px; background: var(--bg-panel); border: 1px solid var(--accent-color); box-shadow: 0 0 30px rgba(168,199,250,0.2); padding: 20px; text-align: left;">
+            <h3 style="margin-top:0; color:var(--accent-color); font-size: 1.2rem; display: flex; align-items: center; gap: 8px; border-bottom: 1px dashed #333; padding-bottom: 12px; margin-bottom: 15px;">
+                🤖 黑灯工厂总控中心
+            </h3>
+            
+            <div class="console-section" style="margin-bottom: 15px; padding: 12px;">
+                <h4 style="color: #ccc;">🖥️ 界面引擎与模式</h4>
+                <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                    <button onclick="setUIMode('simple')" id="btn-mode-simple" class="mode-btn active">极简执行流</button>
+                    <button onclick="setUIMode('dev')" id="btn-mode-dev" class="mode-btn">极客调度台</button>
+                </div>
+                <div class="console-row" style="margin-bottom: 0;">
+                    <span>全局自动朗读回复</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="tts-toggle" onchange="if(typeof toggleTTS === 'function') toggleTTS(this)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="console-section" style="margin-bottom: 15px; padding: 12px; border-color: rgba(32,201,151,0.3);">
+                <h4 style="color: #20c997;">🔊 发声器官 (Edge-TTS 物理调优)</h4>
+                
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 0.75rem; color: #888;">🎙️ 微软级原生音色库</label>
+                    <select id="tts-voice-select" style="width: 100%; background: #000; color: #eee; border: 1px solid #444; padding: 8px; border-radius: 6px; outline: none; margin-top: 6px;">
+                        <option value="zh-CN-YunxiNeural" selected>云希 (Yunxi) - 男声，沉稳解说</option>
+                        <option value="zh-CN-XiaoxiaoNeural">晓晓 (Xiaoxiao) - 女声，温暖经典</option>
+                        <option value="zh-CN-YunjianNeural">云健 (Yunjian) - 男声，激情活力</option>
+                        <option value="zh-CN-XiaoyiNeural">晓伊 (Xiaoyi) - 女声，活泼灵动</option>
+                        <option value="zh-CN-YunxiaNeural">云夏 (Yunxia) - 男声，阳光少年</option>
+                        <option value="zh-CN-XiaoxuanNeural">晓萱 (Xiaoxuan) - 女声，温柔知性</option>
+                        <option value="zh-CN-YunyangNeural">云扬 (Yunyang) - 男声，专业新闻</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                        <label style="font-size: 0.75rem; color: #888;">⏩ 语速增幅</label>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                            <input type="range" id="tts-rate-slider" min="-50" max="50" step="5" value="0" style="flex: 1;" oninput="this.nextElementSibling.innerText = (this.value > 0 ? '+'+this.value : this.value) + '%'">
+                            <span style="font-family: monospace; font-size: 0.8rem; color: #20c997; width: 35px; text-align: right;">+0%</span>
+                        </div>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                        <label style="font-size: 0.75rem; color: #888;">🎵 音调偏移</label>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                            <input type="range" id="tts-pitch-slider" min="-50" max="50" step="5" value="0" style="flex: 1;" oninput="this.nextElementSibling.innerText = (this.value > 0 ? '+'+this.value : this.value) + 'Hz'">
+                            <span style="font-family: monospace; font-size: 0.8rem; color: #20c997; width: 40px; text-align: right;">+0Hz</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="console-section" style="margin-bottom: 15px; padding: 12px; border-color: rgba(216,180,254,0.3);">
+                <h4 style="color: #d8b4fe;">🌌 跨域跃迁 (四大核心舱)</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button onclick="window.open('/ai.html', '_blank')" style="background: rgba(168,199,250,0.1); border: 1px solid rgba(168,199,250,0.3); color: #a8c7fa; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s;" onmouseover="this.style.background='rgba(168,199,250,0.2)'" onmouseout="this.style.background='rgba(168,199,250,0.1)'">
+                        <span style="font-size: 1.4rem;">🧠</span><span style="font-size: 0.85rem; font-weight: bold;">算力集群</span>
+                    </button>
+                    <button onclick="window.open('/dna.html', '_blank')" style="background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3); color: #ff6b6b; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s;" onmouseover="this.style.background='rgba(255,107,107,0.2)'" onmouseout="this.style.background='rgba(255,107,107,0.1)'">
+                        <span style="font-size: 1.4rem;">🧬</span><span style="font-size: 0.85rem; font-weight: bold;">基因图谱</span>
+                    </button>
+                    <button onclick="window.open('/work.html', '_blank')" style="background: rgba(32,201,151,0.1); border: 1px solid rgba(32,201,151,0.3); color: #20c997; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s;" onmouseover="this.style.background='rgba(32,201,151,0.2)'" onmouseout="this.style.background='rgba(32,201,151,0.1)'">
+                        <span style="font-size: 1.4rem;">⚙️</span><span style="font-size: 0.85rem; font-weight: bold;">流水线车间</span>
+                    </button>
+                    <button onclick="window.open('/boss.html', '_blank')" style="background: rgba(216,180,254,0.1); border: 1px solid rgba(216,180,254,0.3); color: #d8b4fe; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s;" onmouseover="this.style.background='rgba(216,180,254,0.2)'" onmouseout="this.style.background='rgba(216,180,254,0.1)'">
+                        <span style="font-size: 1.4rem;">🏢</span><span style="font-size: 0.85rem; font-weight: bold;">厂长办公室</span>
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="document.getElementById('mode-modal').style.display='none'" style="width:100%; background:var(--accent-color); color:#000; font-weight:bold; border:none; padding:12px; border-radius:8px; cursor:pointer; margin-top:5px; transition:0.2s; box-shadow: 0 4px 15px rgba(168,199,250,0.3);" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='brightness(1)'">部署配置并返回</button>
+        </div>
+    </div>
+
+    <div id="ouroborosModal" class="modal-overlay" style="display:none; z-index:99999; align-items:center; justify-content:center;">
+        <div class="modal-content" style="width:90%; max-width:700px; border-color:#ff6b6b; box-shadow: 0 0 40px rgba(255,107,107,0.3); display:flex; flex-direction:column; max-height:90vh; text-align: left;">
+            <h3 style="color:#ff6b6b; margin-top:0; display:flex; align-items:center; gap:10px; border-bottom: 1px solid #333; padding-bottom: 12px;">
+                <span style="animation: pulse 1.5s infinite;">🚨</span> 节点逃逸阻断与自检研判舱
+            </h3>
+            
+            <div style="background:#0a0a0c; border:1px solid #333; padding:15px; border-radius:8px; margin-bottom:15px; font-family:monospace; font-size:0.85rem; color:#aaa;">
+                <div><b>故障节点:</b> <span id="ob-node-id" style="color:#d8b4fe;"></span></div>
+                <div><b>载体机床:</b> <span id="ob-machine-id" style="color:#a8c7fa;"></span></div>
+                <div><b>现场快照:</b> <span id="ob-session-id" style="color:#888;"></span></div>
+            </div>
+
+            <div style="flex:1; overflow-y:auto; background:#000; border:1px inset #222; border-radius:8px; padding:15px; margin-bottom:15px; font-family:monospace; font-size:0.85rem; line-height:1.6;" id="ob-console-output">
+                <span style="color:#888;">正在等待深度自检指令...</span>
+            </div>
+
+            <div style="display:flex; gap:15px; justify-content:space-between; flex-shrink:0;">
+                <button onclick="closeOuroborosModal()" style="flex:1; padding:12px; background:transparent; border:1px solid #555; color:#aaa; border-radius:8px; cursor:pointer; transition:0.2s;">忽略并取消</button>
+                <button id="ob-btn-diagnose" onclick="startAutonomousHealing()" style="flex:2; padding:12px; background:linear-gradient(135deg, #ff6b6b 0%, #ff4757 100%); color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer; transition:0.2s;">
+                    🧠 授权首席诊断师提取快照并生成抗体
+                </button>
+                <button id="ob-btn-apply" onclick="applyGeneratedPatch()" style="flex:2; padding:12px; background:linear-gradient(135deg, #20c997 0%, #0ca678 100%); color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer; display:none; transition:0.2s;">
+                    💉 确认落盘并热更新流水线
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Ouroboros 核心 JS 逻辑 (主控制台版)
+        let obContext = { workflowId: null, nodeId: null, machineId: null, sessionId: null, patch: null };
+        function triggerOuroborosProtocol(workflowId, errorData) {
+            obContext = { workflowId: workflowId, nodeId: errorData.node_id, machineId: errorData.machine_id, sessionId: errorData.session_id, patch: null };
+            document.getElementById('ob-node-id').innerText = errorData.node_id || '未知';
+            document.getElementById('ob-machine-id').innerText = errorData.machine_id || '未知';
+            document.getElementById('ob-session-id').innerText = errorData.session_id || '未知';
+            document.getElementById('ob-console-output').innerHTML = `<span style="color:#ff6b6b;">${errorData.message}</span><br><br>系统已锁定案发现场快照，随时可进行深度自检。`;
+            document.getElementById('ob-btn-diagnose').style.display = 'block';
+            document.getElementById('ob-btn-diagnose').disabled = false;
+            document.getElementById('ob-btn-apply').style.display = 'none';
+            document.getElementById('ouroborosModal').style.display = 'flex';
+        }
+        function closeOuroborosModal() { document.getElementById('ouroborosModal').style.display = 'none'; }
+
+        async function startAutonomousHealing() {
+            const consoleOut = document.getElementById('ob-console-output');
+            const btnDiag = document.getElementById('ob-btn-diagnose');
+            btnDiag.disabled = true;
+            try {
+                consoleOut.innerHTML = "<span style='color:#a8c7fa;'>[1/3] 正在全域雷达中搜寻可用算力节点...</span><br>";
+                const aiRes = await fetch('/api/config/ai');
+                const aiData = await aiRes.json();
+                
+                let allNodes = [];
+                if (aiData.categories) {
+                    aiData.categories.forEach(cat => cat.nodes.forEach(n => { if (n.enabled !== false && n.key) allNodes.push(n); }));
+                } else if (aiData.vendors) {
+                    allNodes = aiData.vendors.filter(n => n.enabled !== false && n.key);
+                }
+
+                if (allNodes.length === 0) throw new Error("全域静默，未找到任何通电且配置了 Token 的可用算力节点！");
+
+                // 💡 CLI 优先法则：强行让 CLI 节点优先担任诊断师！
+                allNodes.sort((a, b) => {
+                    const aIsCli = a.exec_mode === 'cli';
+                    const bIsCli = b.exec_mode === 'cli';
+                    if (aIsCli && !bIsCli) return -1;
+                    if (!aIsCli && bIsCli) return 1;
+                    return 0;
+                });
+
+                // 选定排在第一顺位的最高优节点
+                let chiefPhysician = allNodes[0];
+                const modeStr = chiefPhysician.exec_mode === 'cli' ? '💻 物理机床' : '🌐 云端架构师';
+                consoleOut.innerHTML += `<span style='color:#20c997;'>锁定首席诊断师：[${modeStr}] ${chiefPhysician.name}。</span><br><br>`;
+
+                consoleOut.innerHTML += "<span style='color:#a8c7fa;'>[2/3] 正在穿透读取容器崩溃前遥测快照...</span><br>";
+                const logRes = await fetch(`/api/diagnostics/logs/${obContext.sessionId}`);
+                if(!logRes.ok) throw new Error("无法读取该任务底层快照。");
+                const logData = await logRes.json();
+                
+                // 🛡️ V20 衔尾蛇降级瘦身：绝不把几十万 Token 的死锁历史全喂给诊断师
+                let chatHistoryStr = JSON.stringify(logData.history, null, 2);
+                if (chatHistoryStr.length > 3500) {
+                    chatHistoryStr = "【⚠️ Ouroboros 警告：历史记录过长，系统已触发物理截断，仅保留案发最后现场】\n...\n" + chatHistoryStr.slice(-3500);
+                }
+                
+                consoleOut.innerHTML += `<span style='color:#20c997;'>快照提取成功，已剔除冗余干扰。</span><br><br>`;
+
+                consoleOut.innerHTML += "<span style='color:#d8b4fe;'>[3/3] 诊断师正在分析故障，现场搓写赛博镣铐...</span><br>";
+                const sysPrompt = `你是一个顶级安全架构师与系统诊断师。分析下方失败的任务对话快照，找出导致失败的逻辑缺陷。然后生成一个修补用的JSON，提炼出新的 Rule (红线) 或 SOP。
+【绝对强制】：只输出JSON，格式如下：
+{
+  "analysis": "【自检报告】：发现问题...",
+  "proposed_dnas": [
+    { "id": "大写英文ID", "type": "rule或sop或identity", "name": "带Emoji中文名", "content": "内容..." }
+  ],
+  "requires_new_preset": false,
+  "new_preset_id": null
+}`;
+                const res = await fetch(chiefPhysician.url, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${chiefPhysician.key}` },
+                    body: JSON.stringify({ model: chiefPhysician.name, messages: [{ role: "system", content: sysPrompt }, { role: "user", content: `【现场遥测快照】：\n${chatHistoryStr}` }], temperature: 0.1 })
+                });
+
+                if(!res.ok) throw new Error("诊断师请求失败");
+                const data = await res.json();
+                const reply = data.choices[0].message.content.trim();
+                const match = reply.match(/\{[\s\S]*\}/);
+                if (!match) throw new Error("未返回合法 JSON。");
+                obContext.patch = JSON.parse(match[0]);
+                consoleOut.innerHTML = `
+                    <div style="color:#ff6b6b; font-size:1rem; margin-bottom:10px;">📋 诊断结论：</div>
+                    <div style="color:#eee; margin-bottom:20px; border-left:3px solid #ff6b6b; padding-left:10px;">${obContext.patch.analysis}</div>
+                    <div style="color:#20c997; font-size:1rem; margin-bottom:10px;">💉 提炼抗体：</div>
+                    ${obContext.patch.proposed_dnas.map(dna => `<div style="background:rgba(32,201,151,0.1); padding:8px; border-left:3px solid #20c997; margin-bottom:5px;"><b>[${dna.id}]</b> ${dna.name}</div>`).join('')}
+                    ${obContext.patch.requires_new_preset ? `<div style="color:#a8c7fa; margin-top:10px;">🔄 建议替换机床出厂预设为：${obContext.patch.new_preset_id}</div>` : ''}
+                `;
+                btnDiag.style.display = 'none';
+                document.getElementById('ob-btn-apply').style.display = 'block';
+            } catch (error) {
+                consoleOut.innerHTML += `<br><span style='color:#ff6b6b;'>❌ 诊断中断：${error.message}</span>`;
+                btnDiag.disabled = false;
+            }
+        }
+
+        async function applyGeneratedPatch() {
+            const btnApply = document.getElementById('ob-btn-apply');
+            const consoleOut = document.getElementById('ob-console-output');
+            btnApply.disabled = true; btnApply.innerText = "⏳ 正在热更新全域配置...";
+            try {
+                const payload = {
+                    workflow_id: obContext.workflowId, node_id: obContext.nodeId,
+                    target_machine_id: obContext.machineId, new_dnas: obContext.patch.proposed_dnas,
+                    new_preset_id: obContext.patch.new_preset_id
+                };
+                const res = await fetch('/api/workflow/auto_patch', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                if(!res.ok) throw new Error("后端注射泵拒绝了热更新请求。");
+                consoleOut.innerHTML = `<h2 style="color:#20c997; text-align:center; margin-top:20px;">✅ 基因重组完成，机床已恢复免疫力！</h2>`;
+                setTimeout(() => { closeOuroborosModal(); if(typeof window.pollWorkflowStatus === 'function') window.pollWorkflowStatus(); }, 2000);
+            } catch (e) {
+                consoleOut.innerHTML += `<br><span style='color:#ff6b6b;'>❌ 热更新失败：${e.message}</span>`;
+                btnApply.disabled = false; btnApply.innerText = "💉 确认落盘并热更新流水线";
+            }
+        }
+    </script>
+    <div class="app-container">
+        <header class="mobile-header" style="justify-content: space-between; padding: 10px 15px;">
+            <button id="btn-toggle-left" class="icon-btn" style="padding-left: 0;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            
+            <div class="header-title" style="display:flex; align-items:center; gap:8px; background: rgba(255,255,255,0.05); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease;">
+                
+                <div id="dev-header-area">
+                    <select id="domain-selector" style="background:transparent; border:none; color:#fff; font-size:1rem; font-weight:bold; cursor:pointer; outline:none;">
+                    </select>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#888" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+
+                <div id="simple-header-area">
+                    <select id="simple-wf-selector" style="background:transparent; border:none; color:#d8b4fe; font-size:1rem; font-weight:bold; cursor:pointer; outline:none; max-width: 160px; text-overflow: ellipsis;">
+                        <option value="">纯净聊天模式</option>
+                    </select>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#d8b4fe" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+
+            </div>
+
+            <button id="btn-toggle-right" class="icon-btn" style="padding-right: 0;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
+        </header>
+
+        <div id="overlay" class="overlay"></div>
+
+        <aside class="sidebar sidebar-left" id="sidebar-left">
+            <div style="text-align:center; color:#777; margin-top:50px;">加载大盘模块...</div>
+        </aside>
+
+        <main class="main-stage">
+            <div id="queue-badge" style="display: none; position: absolute; top: 15px; left: 50%; transform: translateX(-50%); background: rgba(168, 199, 250, 0.15); border: 1px solid rgba(168, 199, 250, 0.5); color: #a8c7fa; padding: 6px 16px; border-radius: 20px; font-size: 0.8rem; z-index: 100; backdrop-filter: blur(8px); align-items: center; gap: 8px; animation: pulse-cruise 2s infinite; pointer-events: none;">
+                <span id="queue-text">黑灯工厂后台推演中... (可离开本页)</span>
+            </div>
+
+            <div class="chat-area" id="chat-box"></div>
+
+            <div class="draggable-wrapper" id="drag-wrapper">
+                <div class="drag-handle" id="drag-handle"><div class="drag-bar"></div></div>
+                
+                <div class="gemini-input-container">
+                    <textarea id="chat-input" class="gemini-textarea" placeholder="向管家下达开发指令，或上传代码报错截图..." rows="1"></textarea>
+                    
+                    <div class="gemini-bottom-bar">
+                        
+                        <div class="gemini-left-actions">
+                            <button class="g-icon-btn" title="上传附件/图纸" id="btn-upload">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                            </button>
+                            <div class="inline-factory-badge" id="ui-mode-badge">
+                                <span id="ui-mode-icon" style="flex-shrink: 0;">⚙️</span>
+                                <div class="badge-scroll-wrapper">
+                                    <span id="ui-mode-text">管家待命</span>
+                                </div>
+                                <span class="close-btn" onclick="stopWorkflow()" title="取消挂载">×</span>
+                            </div>
+                        </div>
+
+                        <div class="gemini-right-actions">
+                            <div class="iq-selector-wrapper">
+                                <select class="iq-select" id="iq-mode-selector">
+                                    <option value="">载入中...</option>
+                                </select>
+                                <span class="iq-arrow">▼</span>
+                            </div>
+                            <button class="g-send-btn" id="btn-send">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <aside class="sidebar sidebar-right" id="sidebar-right">
+            <div style="text-align:center; color:#777; margin-top:50px;">加载调度模块...</div>
+        </aside>
+    </div>
+    
+    <script>
+        function setUIMode(mode) {
+            if(mode === 'simple') {
+                document.body.classList.add('simple-mode');
+                document.getElementById('btn-mode-simple').classList.add('active');
+                document.getElementById('btn-mode-dev').classList.remove('active');
+                loadSimpleWorkflows();
+            } else {
+                document.body.classList.remove('simple-mode');
+                document.getElementById('btn-mode-dev').classList.add('active');
+                document.getElementById('btn-mode-simple').classList.remove('active');
+            }
+            document.getElementById('mode-modal').style.display = 'none';
+            localStorage.setItem('butler_ui_mode', mode);
+            
+            window.dispatchEvent(new Event('uiModeChanged'));
+        }
+
+        async function loadSimpleWorkflows() {
+            try {
+                const res = await fetch('/api/config/workflows');
+                const templates = await res.json();
+                const sel = document.getElementById('simple-wf-selector');
+                
+                sel.innerHTML = '<option value="">纯净聊天模式</option>';
+                window._cachedWorkflows = templates; 
+
+                const currentEnv = window.currentDomain || 'factory_dev';
+                for (const id in templates) {
+                    const wf = templates[id];
+                    const wfDomain = wf.domain_id || (wf.data && wf.data.domain_id) || 'factory_dev';
+                    
+                    if (wfDomain === currentEnv) {
+                        const opt = document.createElement('option');
+                        opt.value = id;
+                        opt.text = wf.name;
+                        sel.appendChild(opt);
+                    }
+                }
+            } catch (e) { console.error("加载简易工作流失败", e); }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedMode = localStorage.getItem('butler_ui_mode') || 'simple';
+            setUIMode(savedMode);
+
+            document.getElementById('simple-wf-selector').addEventListener('change', async (e) => {
+                const wfId = e.target.value;
+                if (!wfId) {
+                    if (typeof window.stopWorkflow === 'function') window.stopWorkflow();
+                } else {
+                    if (window._cachedWorkflows && window._cachedWorkflows[wfId]) {
+                        if (typeof window.selectAndLockWorkflow === 'function') {
+                            await window.selectAndLockWorkflow(wfId, window._cachedWorkflows[wfId]);
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+
+    <div id="holographic-preview-pane">
+        <div class="holo-header">
+            <span id="holo-title">📄 文档无损投影</span>
+            <button class="holo-close-btn" onclick="window.closeHtmlPreview()">关闭视界 ✖</button>
+        </div>
+        <iframe id="holo-iframe" class="holo-iframe"></iframe>
+    </div>
+
+    <script src="/app_core.js?v=42"></script>
+    <script src="/app_workflow.js?v=42"></script>
+    <script src="/app_chat.js?v=42"></script>
+    
+    <script src="/custom_marked.js"></script>
+</body>
+</html>

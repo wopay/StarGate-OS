@@ -1,0 +1,426 @@
+<div class="panel-header" style="display: flex; gap: 0.5rem; border-bottom: none; padding-bottom: 0; margin-bottom: 1rem;">
+    <div class="tab-btn active" onclick="window.switchRightTab('workflow')" id="tab-btn-workflow" style="flex:1; text-align:center; font-size:0.75rem; padding: 6px 0; font-weight:bold; border-radius:6px;" title="当前挂载的执行链路">⚙️ 流水线</div>
+    <div class="tab-btn" onclick="window.switchRightTab('assets')" id="tab-btn-assets" style="flex:1; text-align:center; font-size:0.75rem; padding: 6px 0; font-weight:bold; border-radius:6px;" title="实体化落盘文件">📦 文件</div>
+    <div class="tab-btn" onclick="window.switchRightTab('memory')" id="tab-btn-memory" style="flex:1; text-align:center; font-size:0.75rem; padding: 6px 0; font-weight:bold; border-radius:6px;" title="系统底噪与向量记忆">🧠 记忆</div>
+    <div class="tab-btn" onclick="window.switchRightTab('report')" id="tab-btn-report" style="flex:1; text-align:center; font-size:0.75rem; padding: 6px 0; color:#ffb74d; font-weight:bold; border-radius:6px;" title="全局雷达与游魂监控">📡 雷达</div>
+</div>
+
+<div id="tab-workflow" class="right-tab-content active" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem;">
+    <div id="domain-filter-badge" style="display:none; background:rgba(168,199,250,0.1); border:1px solid var(--accent-color); color:var(--accent-color); padding:8px 12px; border-radius:10px; font-size:0.75rem; text-align:center; margin-bottom: 5px; font-weight:bold;">
+        📡 频道接驳：<span id="active-domain-name-display" style="color:#fff;">-</span>
+    </div>
+    
+    <div id="workflow-selection-area">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; border: 1px solid #333;">
+            <div style="font-size: 0.75rem; color: #aaa; display: flex; align-items: center;">⚙️ 流水线总仓</div>
+            <div style="display: flex; gap: 8px;">
+                <input type="file" id="wf-import-input" accept=".json" style="display:none" onchange="window.importWorkflow(event)">
+                <button class="exp-action-btn" onclick="document.getElementById('wf-import-input').click()" style="color:#20c997; border-color:rgba(32,201,151,0.3);">📂 导入外部蓝图</button>
+            </div>
+        </div>
+        <div style="margin-bottom: 1.5rem;">
+            <label style="font-size: 0.75rem; color: var(--accent-color); margin-bottom: 0.5rem; display: block; font-weight: bold;">📍 本频道专属流</label>
+            <div id="workflow-cards-current" class="workflow-card-grid"></div>
+        </div>
+        <div>
+            <label style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem; display: block;">🌐 全域云端流 (跨频道调用)</label>
+            <div id="workflow-cards-all" class="workflow-card-grid"></div>
+        </div>
+    </div>
+
+    <div id="workflow-active-area" style="display: none;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 8px; border: 1px solid #333;">
+             <button class="exp-action-btn" onclick="window.stopWorkflow()" style="color:#aaa;">⏹️ 停止挂载</button>
+             <div style="display: flex; gap: 8px;">
+                 <button class="exp-action-btn" onclick="window.exportActiveWorkflow()" style="color:#a8c7fa; border-color:rgba(168,199,250,0.3);">💾 导出</button>
+                 <button class="exp-action-btn" style="color:#ff6b6b; border-color:rgba(255,107,107,0.3);" onclick="window.deleteActiveWorkflow(event)">🗑️ 删除</button>
+             </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(168, 199, 250, 0.1); padding: 10px; border-radius: 10px; border: 1px solid var(--accent-color);">
+            <div>
+                <div style="font-size: 0.6rem; color: var(--accent-color); text-transform: uppercase; font-weight: bold;">引擎已就绪 / 运行中</div>
+                <div id="active-wf-name" style="font-size: 0.9rem; font-weight: bold; color: #fff; margin-top: 2px;">-</div>
+            </div>
+            <div class="status-pulse" style="width:8px; height:8px; background:var(--accent-color); border-radius:50%; box-shadow: 0 0 8px var(--accent-color);"></div>
+        </div>
+        
+        <div id="workflow-progress-list" style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 0.5rem;"></div>
+    </div>
+</div>
+
+<div id="tab-assets" class="right-tab-content" style="display: none; flex: 1; overflow: hidden; flex-direction: column;">
+    <div class="exp-container">
+        <div class="exp-toolbar">
+            <div class="exp-nav-btns">
+                <button onclick="window.explorerNavUp()" title="返回上级">向上</button>
+                <button onclick="window.renderExplorer('/')" title="返回根目录">根盘</button>
+            </div>
+            <div class="exp-address-bar" id="exp-address-bar">本机 \ 资产总仓</div>
+        </div>
+        <div class="exp-action-bar" id="asset-action-bar" style="display: none; justify-content: space-between; align-items: center; background: rgba(32,201,151,0.1); border-color: rgba(32,201,151,0.3);">
+            <div style="font-size: 0.75rem; color: #20c997; font-weight: bold; padding-left: 5px; width:100px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" id="selected-asset-name"></div>
+            <div style="display: flex; gap: 6px;">
+                <button class="exp-action-btn" style="color:#a8c7fa; border-color:rgba(168,199,250,0.3);" onclick="window.viewSelectedAsset()">👁️ 查看/放大</button>
+                <button class="exp-action-btn" style="color:#20c997; border-color:rgba(32,201,151,0.3);" onclick="window.downloadSelectedAsset()">📥 下载保存</button>
+                <button class="exp-action-btn" style="color:#ff6b6b; border-color:rgba(255,107,107,0.3);" onclick="window.deleteSelectedAsset()">🗑️ 删除</button>
+            </div>
+        </div>
+        <div class="exp-body" id="asset-grid">
+            <div style="color: #777; text-align: center; margin-top: 50px; font-size: 0.85rem; grid-column: 1 / -1;">正在检索云端资产...</div>
+        </div>
+    </div>
+</div>
+
+<div id="tab-memory" class="right-tab-content" style="display: none; flex: 1; overflow-y: auto; flex-direction: column; gap: 10px;">
+    <div style="background: rgba(255, 183, 77, 0.1); border: 1px dashed rgba(255, 183, 77, 0.3); padding: 10px; border-radius: 8px; font-size: 0.7rem; color: #ffb74d; line-height: 1.4;">
+        <b style="font-size: 0.8rem;">Session Scope (会话级深层记忆)</b><br>
+        在这里，您可以查阅 AI 通过 <code>[刻入本局钢印]</code> 提炼出的核心结晶。这些记忆将强制贯穿当前对话的始终，绝不丢失。
+    </div>
+    <div id="memory-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 5px;">
+        <div style="color: #777; text-align: center; font-size: 0.85rem; line-height: 1.6; margin-top: 30px;">
+            <div style="color: #eee; font-weight: bold; margin-bottom: 6px; font-size: 1rem;">底层思想钢印为空</div>
+            在聊天窗口中，点击 AI 回复下方的<br><b>[蒸馏核心结论]</b> 按钮<br>即可将其转化为系统潜意识。
+        </div>
+    </div>
+</div>
+
+<div id="tab-report" class="right-tab-content" style="display: none; flex: 1; overflow-y: hidden; flex-direction: column; gap: 12px;">
+    <div style="background: rgba(20, 20, 22, 0.8); border: 1px solid #444; padding: 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); flex-shrink: 0;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #333; padding-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: bold; color: #fff;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 2-9h5"/></svg>
+                黑灯工厂中控台
+            </div>
+            <div style="font-size: 0.7rem; background: rgba(76, 175, 80, 0.15); color: #4caf50; padding: 4px 10px; border-radius: 12px; border: 1px solid rgba(76, 175, 80, 0.3); display: flex; align-items: center; gap: 4px;">
+                <div class="status-pulse" style="width:6px; height:6px; background:#4caf50; border-radius:50%; box-shadow: 0 0 8px #4caf50;"></div>
+                中枢在线
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="background: #111; padding: 12px; border-radius: 8px; border: 1px solid #222;">
+                <div style="font-size: 0.65rem; color: #888; margin-bottom: 4px;">引擎驱动节点</div>
+                <div style="font-size: 1rem; color: #eee; font-family: monospace; font-weight: bold;">[gemini-agent]</div>
+            </div>
+            <div style="background: #111; padding: 12px; border-radius: 8px; border: 1px solid #222; position: relative;">
+                <div style="font-size: 0.65rem; color: #888; margin-bottom: 4px;">物理进程状态</div>
+                <div style="display: flex; align-items: center; gap: 6px; margin-top:2px;">
+                    <div id="worker-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #ffbd2e; box-shadow: 0 0 8px #ffbd2e; transition: 0.3s;"></div>
+                    <div id="worker-status-text" style="font-size: 0.85rem; color: #ccc; font-weight: bold;">静默待命 (Idle)</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+            <button onclick="window.triggerEvolutionTask(this)" class="fac-btn fac-btn-primary" style="position: relative; overflow: hidden;">
+                <span style="position: relative; z-index: 1;">⚡ 物理派发：执行 [衔尾蛇进化] 协议</span>
+            </button>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="alert('请确保您在 learn.html 的领航矩阵中至少配置了一个引擎！')" class="fac-btn fac-btn-secondary">
+                    🩺 诊断路由链路
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div style="font-size: 0.75rem; color: #888; padding-left: 4px; margin-top: 4px; display:flex; justify-content:space-between; align-items:center;">
+        <span>📡 物理层多线程雷达探头</span>
+        <div style="display:flex; gap: 12px; align-items: center;">
+            <button onclick="let iframe = document.getElementById('radar-iframe'); iframe.src = iframe.getAttribute('data-src'); this.innerText = '[🔄 重载探头]';" style="background:transparent; border:none; color:#a8c7fa; cursor:pointer; font-size:0.7rem; padding:0; font-weight:bold;">[▶️ 唤醒雷达]</button>
+            <button onclick="window.open('/boss.html', '_blank')" style="background:transparent; border:none; color:#ffb74d; cursor:pointer; font-size:0.75rem; font-weight:bold; padding:0; text-shadow: 0 0 8px rgba(255,183,77,0.5);">[👑 厂长办公室]</button>
+        </div>
+    </div>
+    <div id="radar-container" style="flex: 1; border: 1px solid #333; border-radius: 8px; overflow: hidden; background: #0a0a0c; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); position: relative; min-height: 200px;">
+        
+        <iframe id="radar-iframe" src="about:blank" data-src="http://192.168.2.2:8999" width="100%" height="100%" style="border:none; position:absolute; top:0; left:0; z-index:2;"></iframe>
+        
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #555; font-size: 0.8rem; pointer-events: none; z-index: 1; text-align:center;">
+            等待指挥官接通雷达监控...<br><span style="font-size:0.6rem; color:#444;">(已开启静默待命，节省带宽)</span>
+        </div>
+    </div>
+</div>
+
+<div style="margin-top: auto; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+    <a href="/work.html" target="_blank" class="action-btn" style="text-decoration: none; color: var(--text-muted); background: transparent; padding: 0.8rem 0.5rem; justify-content: center;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        进入厂长主控室 (新标签)
+    </a>
+</div>
+
+<script>
+    // 💡 适配 V6.0 调度协议：将进化协议精准下放到当前频道
+    window.triggerEvolutionTask = async function(btn) {
+        if (!window.currentDomain) {
+            alert("⚠️ 严重错误：主脑处于混沌状态。请先在左上角接入一个频道，再启动进化协议。");
+            return;
+        }
+        
+        let dot = document.getElementById('worker-status-dot');
+        let txt = document.getElementById('worker-status-text');
+        
+        btn.innerHTML = '⏳ 协议注入中...';
+        btn.disabled = true;
+        if(dot && txt) {
+            dot.style.background = "#20c997"; 
+            dot.style.boxShadow = "0 0 12px #20c997";
+            txt.innerText = "高维推演中 (Running)";
+            txt.style.color = "#20c997";
+        }
+
+        try {
+            const payload = {
+                chat_id: window.currentChatId || "factory_sys_cmd_" + Date.now(),
+                step_title: "衔尾蛇进化",
+                instruction: "作为首席架构师，立即启动 [衔尾蛇进化] 协议：扫描 /app/data 下的代码架构，分析系统瓶颈并自拟一份重构计划。",
+                user_input: "物理指令：执行系统全量自检与进化模拟。",
+                vendors: ["pro"], 
+                deliver_type: "agent_async_task", 
+                domain_id: window.currentDomain,  
+                work_mode: "creation",
+                is_dispatcher: false
+            };
+
+            const response = await fetch('/api/workflow/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                btn.innerHTML = '✅ 协议已下放';
+                setTimeout(() => {
+                    btn.innerHTML = '⚡ 物理派发：执行 [衔尾蛇进化] 协议';
+                    btn.disabled = false;
+                }, 3000);
+            } else {
+                throw new Error("节点拒绝访问");
+            }
+        } catch (e) {
+            console.error("进化任务调度失败:", e);
+            btn.innerHTML = '❌ 指令下达失败';
+            btn.style.background = '#ff6b6b';
+
+            if(dot && txt) {
+                dot.style.background = "#ffbd2e";
+                dot.style.boxShadow = "0 0 8px #ffbd2e";
+                txt.innerText = "静默待命 (Idle)";
+                txt.style.color = "#ccc";
+            }
+            
+            setTimeout(() => {
+                btn.innerHTML = '⚡ 物理派发：执行 [衔尾蛇进化] 协议';
+                btn.style.background = '';
+                btn.disabled = false;
+            }, 3000);
+        }
+    };
+
+    // 💡 记忆钢印：物理擦除中枢 (发送 null 给后端覆盖清空)
+    window.deleteMemoryItem = async function(originalKey, btnElem) {
+        if (!window.currentChatId) return;
+        if (!confirm("⚠️ 高危操作：确定要物理擦除该段记忆钢印吗？此操作不可逆！")) return;
+        
+        btnElem.innerHTML = "擦除中...";
+        try {
+            const res = await fetch(`/api/chats/${window.currentChatId}/session`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    updates: { [originalKey]: null } // 通过更新为 null 来覆盖旧记忆
+                })
+            });
+            if(res.ok) {
+                // 触发 app_core.js 里的渲染函数重新加载
+                if(typeof window.extractMemory === 'function') window.extractMemory();
+            } else {
+                btnElem.innerHTML = "擦除失败";
+            }
+        } catch(e) {
+            console.error("擦除记忆钢印失败", e);
+            btnElem.innerHTML = "网络异常";
+        }
+    };
+</script>
+
+<style>
+    /* =======================================================================
+       🚨 厂长特供装甲一：强行修复全屏时 you.html 被挤出屏幕的 BUG
+       ======================================================================= */
+    /* 1. 强制锁死底层网格，斩断中间聊天区代码块的隐性膨胀 */
+    .app-container {
+        grid-template-columns: 260px minmax(0, 1fr) 280px !important;
+        width: 100vw !important;
+        max-width: 100% !important;
+    }
+    /* 2. 剥夺主舞台的所有向外扩张权利 */
+    .main-stage, .chat-area, .message-row, .message-content {
+        min-width: 0 !important; 
+    }
+    /* 3. 同步修复简易模式的排版坍塌 */
+    @media (min-width: 901px) {
+        body.simple-mode .app-container { 
+            grid-template-columns: 260px minmax(0, 1fr) 0px !important; 
+        }
+    }
+
+    /* =======================================================================
+       📱 厂长特供装甲二：修复手机端聊天框【挂载胶囊】被挤压变形的 BUG
+       ======================================================================= */
+    .inline-factory-badge {
+        flex-shrink: 0 !important; 
+        max-width: 55vw !important; 
+        overflow: hidden !important;
+    }
+    .inline-factory-badge .close-btn {
+        flex-shrink: 0 !important;
+    }
+    #ui-mode-text {
+        display: inline-block !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        vertical-align: middle;
+    }
+
+    :root {
+        --color-recog: #4dabf7;  
+        --color-create: #d8b4fe; 
+        --color-cond: #ffb74d;   
+        --color-leaf: #4caf50;   
+        --color-swarm: #f59f00;  
+        --color-sandbox: #20c997; 
+    }
+
+    .workflow-card-grid {
+        display: flex; 
+        flex-direction: column; 
+        gap: 12px; 
+        padding-top: 5px;
+    }
+
+    .wf-select-card { 
+        background: #1a1b1e; 
+        border: 1px solid #333; 
+        padding: 14px 18px; 
+        border-radius: 10px; 
+        cursor: pointer; 
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); 
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .wf-select-card::before {
+        content: "";
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 4px;
+        background: var(--accent-color);
+        opacity: 0.3;
+        transition: 0.3s;
+    }
+
+    .wf-select-card:hover { 
+        border-color: var(--accent-color); 
+        background: rgba(168, 199, 250, 0.1); 
+        transform: translateX(5px); 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    
+    .wf-select-card:hover::before { opacity: 1; }
+
+    .wf-select-card .name { 
+        font-size: 0.85rem; 
+        font-weight: bold; 
+        color: #fff; 
+        letter-spacing: 0.5px;
+    }
+
+    .workflow-step-item { 
+        transition: all 0.4s ease; 
+        margin-bottom: 8px;
+        background: rgba(255,255,255,0.02);
+        border: 1px solid #2a2a2d;
+    }
+    
+    .step-theme-recog { border-left: 4px solid var(--color-recog) !important; }
+    .step-theme-create { border-left: 4px solid var(--color-create) !important; }
+    .step-theme-cond { border-left: 4px solid var(--color-cond) !important; }
+    .step-theme-leaf { border-left: 4px solid var(--color-leaf) !important; }
+
+    /* 💡 记忆钢印卡片与删除按钮 */
+    .memory-card { 
+        background: #0c0c0e; 
+        border: 1px solid #333; 
+        border-radius: 8px; 
+        padding: 12px; 
+        margin-bottom: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .memory-key { 
+        font-size: 0.7rem; 
+        color: var(--accent-color); 
+        margin-bottom: 8px; 
+        font-weight: bold; 
+        text-transform: uppercase;
+        border-bottom: 1px solid #222; 
+        padding-bottom: 6px; 
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .memory-val { 
+        font-size: 0.75rem; 
+        color: #aaa; 
+        word-break: break-all; 
+        white-space: pre-wrap; 
+        line-height: 1.5;
+        font-family: 'Consolas', monospace; 
+    }
+    .memory-del-btn {
+        background: transparent; border: 1px solid #444; color: #ff6b6b; cursor: pointer;
+        font-size: 0.7rem; margin-left: auto; transition: 0.2s; padding: 2px 6px; border-radius: 4px;
+    }
+    .memory-del-btn:hover { background: rgba(255,107,107,0.1); border-color: #ff6b6b; }
+
+    .fac-btn { 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        gap: 8px; 
+        border: none; 
+        border-radius: 8px; 
+        font-size: 0.85rem; 
+        font-weight: bold; 
+        cursor: pointer; 
+        transition: all 0.2s ease; 
+        padding: 12px;
+        color: #fff;
+    }
+    .fac-btn svg { width: 16px; height: 16px; }
+    .fac-btn:active { transform: scale(0.97); filter: contrast(1.2); }
+    .fac-btn-primary { background: linear-gradient(135deg, #ffb74d 0%, #f59f00 100%); color: #111; width: 100%; box-shadow: 0 4px 15px rgba(245,159,0,0.3); }
+    .fac-btn-primary:hover { filter: brightness(1.1); box-shadow: 0 6px 20px rgba(245,159,0,0.5); }
+    .fac-btn-secondary { background: rgba(255,255,255,0.05); color: #ccc; border: 1px solid #444; flex: 1; }
+    .fac-btn-secondary:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: #555; }
+    .exp-container { display: flex; flex-direction: column; height: 100%; background: #111; border: 1px solid #333; border-radius: 8px; overflow: hidden; }
+    .exp-toolbar { display: flex; align-items: center; gap: 10px; padding: 8px; background: #1a1b1e; border-bottom: 1px solid #333; }
+    .exp-nav-btns button { background: transparent; border: 1px solid #444; color: #ccc; border-radius: 4px; padding: 4px 8px; cursor: pointer; transition: 0.2s; }
+    .exp-nav-btns button:hover { background: #333; color: #fff; }
+    .exp-address-bar { flex: 1; background: #0c0c0c; border: 1px solid #333; padding: 6px 12px; border-radius: 4px; font-size: 0.75rem; color: #aaa; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .exp-action-bar { display: flex; gap: 8px; padding: 8px; background: #151515; border-bottom: 1px solid #222; }
+    .exp-action-btn { background: rgba(255,255,255,0.05); border: 1px solid transparent; color: #aaa; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; transition: 0.2s; }
+    .exp-action-btn:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: #555; }
+    .exp-body { flex: 1; overflow-y: auto; padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 12px; align-content: flex-start; }
+    .exp-item { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; transition: all 0.1s; }
+    .exp-item:hover { background: rgba(168, 199, 250, 0.1); border-color: rgba(168, 199, 250, 0.3); }
+    .exp-icon { font-size: 2.5rem; line-height: 1; }
+    .exp-thumb-wrapper { width: 60px; height: 60px; border-radius: 4px; overflow: hidden; background: #222; display: flex; align-items: center; justify-content: center; border: 1px solid #444; }
+    .exp-img-thumb { width: 100%; height: 100%; object-fit: cover; }
+    .exp-icon-large { font-size: 2rem; line-height: 1; }
+    .exp-name { font-size: 0.7rem; color: #ccc; text-align: center; word-break: break-all; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; max-width: 100%; }
+</style>

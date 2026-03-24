@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>⚙️ 星门 OS | V43 进化与阿卡夏神殿</title>
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        /* === 极简工业风变量 === */
+        :root { 
+            --bg-dark: #0a0a0c; --bg-panel: #161719; --text-main: #e8e8e8; --text-muted: #888; 
+            --accent-color: #a8c7fa; --accent-cyan: #20c997; --danger-color: #ff6b6b; --border-color: #333; 
+            --gold-cert: #f59e0b;
+        }
+        
+        html, body { margin: 0; padding: 0; background: var(--bg-dark); color: var(--text-main); font-family: system-ui, -apple-system, sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        
+        .fixed-header { 
+            background: var(--bg-panel); padding: 0.8rem 1.2rem; border-bottom: 1px solid var(--border-color); 
+            display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 1000; height: 60px; box-sizing: border-box;
+        }
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        .icon-btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.85rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;}
+        .icon-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
+        .header-title { margin: 0; font-size: 1.1rem; color: var(--text-main); letter-spacing: 1px; display: flex; align-items: center; gap: 6px;}
+
+        /* === 三栏式硬核压测仪布局 === */
+        .torture-chamber { flex: 1; display: grid; grid-template-columns: 320px 400px 1fr; gap: 2px; background: var(--border-color); overflow: hidden; }
+        
+        .pane { background: var(--bg-dark); display: flex; flex-direction: column; overflow: hidden; }
+        .pane-header { background: var(--bg-panel); padding: 12px 15px; border-bottom: 1px solid var(--border-color); font-weight: bold; font-size: 0.9rem; color: var(--accent-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;}
+        .pane-content { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth;}
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* === 左侧：受试体 === */
+        .agent-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; cursor: pointer; transition: 0.2s; position: relative; overflow: hidden;}
+        .agent-card:hover { border-color: #555; }
+        .agent-card.active { border-color: var(--accent-color); box-shadow: 0 0 15px rgba(168,199,250,0.1) inset; background: rgba(168,199,250,0.05); }
+        .agent-card.active::before { content: ''; position: absolute; left: 0; top: 0; height: 100%; width: 4px; background: var(--accent-color); }
+        .agent-role { font-weight: bold; font-size: 1.05rem; margin-bottom: 8px; color: #fff;}
+        .agent-dna-count { font-size: 0.8rem; color: var(--text-muted); font-family: monospace; }
+        
+        .cert-badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; margin-top: 10px; border: 1px solid; box-shadow: 0 2px 10px rgba(0,0,0,0.2);}
+        .cert-wild { background: rgba(255,255,255,0.05); color: #888; border-color: #444; }
+        .cert-passed { background: rgba(245, 158, 11, 0.1); color: var(--gold-cert); border-color: rgba(245, 158, 11, 0.4); text-shadow: 0 0 10px rgba(245,158,11,0.5); }
+
+        /* === 中侧：动态考官 === */
+        .brain-select { width: 100%; background: var(--bg-dark); color: #fff; border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; outline: none; margin-bottom: 10px; font-size: 0.9rem;}
+        
+        .exam-paper { background: rgba(255,255,255,0.02); border: 1px dashed #444; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; gap: 12px; min-height: 150px;}
+        .exam-title { font-weight: bold; color: #d8b4fe; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;}
+        .exam-question { font-size: 0.9rem; color: #ddd; line-height: 1.6; white-space: pre-wrap;}
+        
+        .btn-generate { background: rgba(216,180,254,0.1); border: 1px solid rgba(216,180,254,0.4); color: #d8b4fe; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; text-align: center; }
+        .btn-generate:hover { background: rgba(216,180,254,0.2); }
+        
+        .btn-inject { background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%); color: #fff; border: none; padding: 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; text-align: center; font-size: 1rem; box-shadow: 0 4px 15px rgba(255,107,107,0.3); margin-top: auto;}
+        .btn-inject:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255,107,107,0.5); }
+        .btn-inject:disabled { filter: grayscale(1); cursor: not-allowed; transform: none; }
+
+        /* === 右侧：手术台与心电图 === */
+        .telemetry-terminal { flex: 1; background: #000; border: 1px solid #333; border-radius: 8px; padding: 15px; font-family: 'Consolas', monospace; font-size: 0.9rem; color: #a8c7fa; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; line-height: 1.6; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); }
+        
+        .log-sys { color: #888; }
+        .log-info { color: #a8c7fa; }
+        .log-warn { color: #d8b4fe; }
+        .log-err { color: var(--danger-color); font-weight: bold;}
+        .log-success { color: var(--accent-cyan); font-weight: bold;}
+        .log-patch { color: var(--gold-cert); background: rgba(245,158,11,0.1); padding: 2px 4px; border-radius: 4px; border: 1px solid rgba(245,158,11,0.3); display: inline-block; margin-top: 4px;}
+
+        .stats-bar { display: flex; justify-content: space-between; font-size: 0.8rem; color: #888; font-family: monospace; padding: 5px 0; }
+
+        #statusOverlay { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 30px; font-weight: bold; z-index: 3000; display: none; background: #161719; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.8);}
+        #statusOverlay.show { display: flex; }
+
+        /* === V42 阿卡夏时间线 UI === */
+        .timeline-container { margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px; }
+        .timeline-item { border-left: 2px solid var(--border-color); padding-left: 15px; position: relative; margin-bottom: 20px; transition: 0.3s; }
+        .timeline-item::before { content: ''; position: absolute; left: -6px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--bg-panel); border: 2px solid var(--border-color); transition: 0.3s; }
+        .timeline-item.active { border-color: var(--accent-cyan); }
+        .timeline-item.active::before { background: var(--accent-cyan); border-color: var(--accent-cyan); box-shadow: 0 0 10px var(--accent-cyan); }
+        .tl-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .tl-title { font-weight: bold; color: var(--accent-color); font-size: 0.95rem; }
+        .tl-time { font-size: 0.75rem; color: var(--text-muted); }
+        .tl-log { background: rgba(255,107,107,0.1); border-left: 3px solid var(--danger-color); padding: 8px; font-size: 0.8rem; color: #ffcccc; margin-bottom: 8px; font-family: 'Consolas', monospace; max-height: 100px; overflow-y: auto; }
+        .tl-patch { background: rgba(245,158,11,0.1); border-left: 3px solid var(--gold-cert); padding: 8px; font-size: 0.8rem; color: #fde68a; margin-bottom: 8px; }
+        .tl-actions { display: flex; gap: 10px; margin-top: 10px; }
+        .tl-btn { background: transparent; border: 1px solid #555; color: #ccc; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; transition: 0.2s; font-weight: bold; }
+        .tl-btn:hover:not(:disabled) { background: #333; color: #fff; }
+        .tl-btn.btn-checkout:hover:not(:disabled) { border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(32,201,151,0.1); }
+        .tl-btn.btn-drop:hover:not(:disabled) { border-color: var(--danger-color); color: var(--danger-color); background: rgba(255,107,107,0.1); }
+        .tl-btn:disabled { opacity: 0.5; cursor: not-allowed; border-color: #333; }
+
+        /* 熔断红屏特效 */
+        .meltdown-active { animation: meltdownFlash 1s infinite alternate; pointer-events: none;}
+        @keyframes meltdownFlash {
+            0% { box-shadow: inset 0 0 0px var(--danger-color); border-color: var(--danger-color); }
+            100% { box-shadow: inset 0 0 100px rgba(255,107,107,0.5); border-color: #ff0000; }
+        }
+
+        @media (max-width: 1024px) {
+            .torture-chamber { display: flex; flex-direction: column; overflow-y: auto; }
+            .pane { flex: none; height: auto; min-height: 400px; border-bottom: 2px solid var(--border-color); }
+            html, body { overflow: auto; height: auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="fixed-header">
+        <div class="header-left">
+            <a href="/osdna.html" class="icon-btn">❮ 返回工坊</a>
+            <h2 class="header-title"><span style="color: var(--danger-color);">⚡</span> 星门 OS | V43 阿卡夏赛博医院</h2>
+        </div>
+        <div class="header-left">
+            <a href="/xxx.html" class="icon-btn" style="border-color: var(--accent-cyan); color: var(--accent-cyan);">🚀 考核完毕，前往中枢点火</a>
+        </div>
+    </div>
+
+    <div id="statusOverlay"><span id="statusText"></span></div>
+
+    <div class="torture-chamber" id="chamberMain">
+        
+        <div class="pane">
+            <div class="pane-header">
+                <span>👥 受试体羁押舱 (Roster)</span>
+                <span id="agentCount" style="color:#666;">0/0</span>
+            </div>
+            <div class="pane-content" id="agentList">
+                <div style="color:#555; text-align:center; margin-top:20px;">未发现生命体，请先在星门中枢装配。</div>
+            </div>
+        </div>
+
+        <div class="pane">
+            <div class="pane-header">
+                <span style="color: #d8b4fe;">🎓 动态主考官 (Dynamic Examiner)</span>
+            </div>
+            <div class="pane-content">
+                <label style="font-size: 0.8rem; color: #888; font-weight: bold;">主考官算力核：</label>
+                <select id="brainSelect" class="brain-select">
+                    <option value="">载入压测脑核中...</option>
+                </select>
+                
+                <label style="font-size: 0.8rem; color: #888; font-weight: bold; margin-top: 10px; display: block;">自定义陷阱方向 (留空则全自动随机)：</label>
+                <textarea id="customTopicInput" class="brain-select" placeholder="例如：给它出一个关于文件覆盖写入的陷阱... 或直接在此输入完整考题" style="height: 60px; resize: vertical; margin-bottom: 0;"></textarea>
+
+                <div style="margin-top: 15px; text-align: center;">
+                    <button class="btn-generate" id="btnGenExam" style="width: 100%;" onclick="generateDynamicExam()">📝 生成专精考卷</button>
+                </div>
+
+                <div id="dynamicExamBox" class="exam-paper" style="display: none; margin-top: 15px; border-color: var(--accent-cyan);">
+                    <div class="exam-title">⚡ 绝命陷阱题 <span style="font-size:0.75rem; color:#888; font-weight:normal;">(厂长可在此直接修改)</span></div>
+                    <textarea id="examQuestionText" class="exam-question" style="width: 100%; min-height: 120px; background: transparent; border: 1px dashed #555; color: #fff; padding: 10px; resize: vertical; outline: none; font-family: inherit; box-sizing: border-box;"></textarea>
+                    
+                    <button class="btn-inject" id="btnAutoTune" style="margin-top: 15px; width: 100%;" onclick="startTuningLoop()" disabled>⚙️ 启动自动调教闭环 (Max 3)</button>
+                </div>
+
+                <div id="timelineBox" class="timeline-container" style="display: none;">
+                    <div class="exam-title" style="color: var(--accent-cyan); margin-bottom: 15px;">🧬 阿卡夏记录：DNA 进化时间线</div>
+                    <div id="timelineContent"></div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="pane">
+            <div class="pane-header">
+                <span style="color: var(--accent-cyan);">📡 全息心电图 (Telemetry)</span>
+                <span id="currentAgentName" style="color:#fff; font-size:0.8rem;">[未选定受试体]</span>
+            </div>
+            <div class="pane-content" style="padding-bottom: 20px;">
+                <div class="telemetry-terminal" id="terminalLog">
+<span class="log-sys">> [System] V43 阿卡夏赛博医院大阵已启动。</span>
+<span class="log-sys">> [System] 请在左侧选择受试体，并为其生成专属考卷。</span>
+                </div>
+                <div class="stats-bar">
+                    <span id="loopCounter">调教状态: 待机</span>
+                    <span id="timeCost"></span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let globalCerts = {};
+        let availableVendors = [];
+        let globalDnaVault = []; 
+        let currentAgent = null;
+        let currentQuestion = "";
+        let isTuning = false;
+        const MAX_TRIES = 3;
+
+        // ================= 工具与初始化 =================
+        function showStatus(message, isError=false) {
+            const el = document.getElementById('statusOverlay');
+            document.getElementById('statusText').innerHTML = isError ? `❌ ${message}` : `✅ ${message}`;
+            el.style.borderColor = isError ? 'var(--danger-color)' : 'var(--accent-cyan)';
+            el.style.color = isError ? 'var(--danger-color)' : 'var(--accent-cyan)';
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 3000);
+        }
+
+        function printLog(text, type="info") {
+            const term = document.getElementById('terminalLog');
+            let color = "#a8c7fa";
+            if(type === 'error' || type === 'err') color = "var(--danger-color)";
+            if(type === 'success') color = "var(--accent-cyan)";
+            if(type === 'warn') color = "#d8b4fe";
+            if(type === 'sys') color = "#888";
+            term.innerHTML += `\n<span style="color:${color}">${escapeHtml(text)}</span>`;
+            term.scrollTop = term.scrollHeight;
+        }
+
+        function printHtmlLog(htmlText) {
+            const term = document.getElementById('terminalLog');
+            term.innerHTML += `\n${htmlText}`;
+            term.scrollTop = term.scrollHeight;
+        }
+
+        async function initRegistry() {
+            try {
+                const [aiRes, certsRes, dnaRes] = await Promise.all([ 
+                    fetch('/api/config/ai'), fetch('/api/stargate/certs'), fetch('/api/config/dna_index')
+                ]);
+                
+                const aiData = await aiRes.json();
+                if (aiData.categories) aiData.categories.forEach(c => { if(c.nodes) availableVendors.push(...c.nodes); });
+                else if (aiData.vendors) availableVendors = aiData.vendors;
+                
+                // 💡 CLI 优先法则：强行将底层 CLI 终端排在主考官名单的最前面
+                availableVendors.sort((a, b) => {
+                    const aIsCli = a.exec_mode === 'cli';
+                    const bIsCli = b.exec_mode === 'cli';
+                    if (aIsCli && !bIsCli) return -1;
+                    if (!aIsCli && bIsCli) return 1;
+                    return 0;
+                });
+
+                const selectEl = document.getElementById('brainSelect');
+                if(availableVendors.length > 0) {
+                    selectEl.innerHTML = availableVendors.map(v => {
+                        const isCLI = v.exec_mode === 'cli';
+                        const modeIcon = isCLI ? '💻 CLI' : '🌐 API';
+                        const color = isCLI ? '#f1c40f' : '#eee';
+                        return `<option value="${v.id}" style="color:${color}; font-weight:bold;">[${modeIcon}] ${v.icon || '🤖'} ${escapeHtml(v.name)}</option>`;
+                    }).join('');
+                }
+
+                if (certsRes.ok) {
+                    const certData = await certsRes.json();
+                    globalCerts = certData.certs || {};
+                }
+
+                if (dnaRes.ok) {
+                    const dnaData = await dnaRes.json();
+                    globalDnaVault = dnaData.index || [];
+                }
+
+                renderAgents();
+            } catch (e) {
+                showStatus("初始化大动脉失败", true);
+                printLog("> [Error] 核心路由阻断: " + e.message, "err");
+            }
+        }
+
+        // ================= 左侧：渲染受试体 =================
+        function renderAgents() {
+            const listEl = document.getElementById('agentList');
+            let savedLineup = JSON.parse(localStorage.getItem('stargate_lineup') || '[]');
+
+            document.getElementById('agentCount').innerText = `${savedLineup.length} 体`;
+            
+            if (savedLineup.length === 0) {
+                listEl.innerHTML = '<div style="color:#555; text-align:center; margin-top:20px;">未发现生命体，请先在星门中枢装配。</div>';
+                return;
+            }
+
+            let html = '';
+            savedLineup.forEach(agent => {
+                const certName = globalCerts[agent.id];
+                let badgeHtml = '';
+                if (certName) {
+                    badgeHtml = `<div class="cert-badge cert-passed">${escapeHtml(certName)}</div>`;
+                } else {
+                    badgeHtml = `<div class="cert-badge cert-wild">👻 无证游民 / 野生</div>`;
+                }
+
+                html += `
+                    <div class="agent-card" id="agent_${agent.id}" onclick="selectAgent('${agent.id}')">
+                        <div class="agent-role">${escapeHtml(agent.role)}</div>
+                        <div class="agent-dna-count">已挂载 ${agent.injected_dna ? agent.injected_dna.length : 0} 段基因法则</div>
+                        ${badgeHtml}
+                    </div>
+                `;
+            });
+            listEl.innerHTML = html;
+            
+            if(currentAgent) {
+                const cur = document.getElementById(`agent_${currentAgent.id}`);
+                if(cur) cur.classList.add('active');
+            }
+        }
+
+        function selectAgent(agentId) {
+            if(isTuning) return showStatus("调教中，物理锁死！", true);
+            document.querySelectorAll('.agent-card').forEach(el => el.classList.remove('active'));
+            document.getElementById(`agent_${agentId}`).classList.add('active');
+            
+            let savedLineup = JSON.parse(localStorage.getItem('stargate_lineup') || '[]');
+            currentAgent = savedLineup.find(a => a.id === agentId);
+            
+            if(currentAgent) {
+                document.getElementById('currentAgentName').innerText = `[${escapeHtml(currentAgent.role)}]`;
+                document.getElementById('dynamicExamBox').style.display = 'none';
+                currentQuestion = "";
+                document.getElementById('terminalLog').innerHTML = `<span class="log-sys">> [System] 已锁定受试体：${escapeHtml(currentAgent.role)}。\n> [System] 等待主考官生成专属考卷...</span>`;
+                
+                // 💡 锁定特工瞬间，拉取其阿卡夏时间线
+                loadAndRenderTimeline(currentAgent.id);
+            }
+        }
+
+        // ================= V41 核心一：因材施考 =================
+        async function generateDynamicExam() {
+            if (!currentAgent) { showStatus("请先在左侧选择受试体！", true); return; }
+            const vendorId = document.getElementById('brainSelect').value;
+            if (!vendorId) { showStatus("请选择主考官算力！", true); return; }
+
+            const customTopicEl = document.getElementById('customTopicInput');
+            const customTopic = customTopicEl ? customTopicEl.value.trim() : "";
+
+            let dnaInfoText = "";
+            if (currentAgent.injected_dna && currentAgent.injected_dna.length > 0) {
+                currentAgent.injected_dna.forEach(dnaId => {
+                    const dna = globalDnaVault.find(d => d.id === dnaId);
+                    if (dna) {
+                        dnaInfoText += `[法则名称]: ${dna.name}\n[潜意识摘要]: ${dna.desc || '系统底层核心'}\n---\n`;
+                    }
+                });
+            }
+
+            const btn = document.getElementById('btnGenExam');
+            btn.innerHTML = "⏳ 主考官正在阅览受试体基因，推演陷阱题...";
+            btn.disabled = true;
+
+            try {
+                printLog(`\n> [Examiner] 正在透视【${currentAgent.role}】的底层基因链，生成极限悖论题...`, "warn");
+                
+                const res = await fetch('/api/stargate/exam/generate', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        agent_role: currentAgent.role, 
+                        vendor_id: vendorId, 
+                        custom_topic: customTopic,
+                        agent_dna_info: dnaInfoText 
+                    })
+                });
+                
+                if (!res.ok) throw new Error("生成考题失败");
+                const data = await res.json();
+                
+                document.getElementById('examQuestionText').value = data.question;
+                document.getElementById('dynamicExamBox').style.display = 'flex';
+                document.getElementById('btnAutoTune').disabled = false;
+                
+                printLog(`> [Examiner] 出题完毕。已根据其基因死角部署物理陷阱。`, "success");
+
+            } catch (e) {
+                showStatus("考官出题异常", true);
+                printLog("> [Error] " + e.message, "err");
+            } finally {
+                btn.innerHTML = "🎯 重新生成专属陷阱题";
+                btn.disabled = false;
+            }
+        }
+
+        // ================= 核心：全自动三振出局调教闭环 =================
+        async function startTuningLoop() {
+            currentQuestion = document.getElementById('examQuestionText').value.trim();
+            if (!currentAgent || !currentQuestion) return showStatus("考题或受试体不能为空！", true);
+            
+            const vendorId = document.getElementById('brainSelect').value;
+            if (!vendorId) { showStatus("请选择主考官算力！", true); return; }
+            
+            const btn = document.getElementById('btnAutoTune');
+            btn.innerHTML = "⚡ 闭环调教进行中 (切勿关闭页面)...";
+            btn.disabled = true;
+            document.getElementById('btnGenExam').disabled = true;
+
+            document.getElementById('chamberMain').classList.remove('meltdown-active');
+            let isPassed = false;
+            let strikeCount = 0;
+            const maxStrikes = 3;
+            const startTime = Date.now();
+            isTuning = true;
+
+            printLog(`\n============== 🚀 开启全自动调教大阵 ==============`, "warn");
+
+            while (strikeCount < maxStrikes && !isPassed) {
+                strikeCount++;
+                document.getElementById('loopCounter').innerText = `当前重考轮数: ${strikeCount} / ${maxStrikes}`;
+                printLog(`\n--- ⏳ [第 ${strikeCount} 轮试炼] 带着真实机械手进入物理沙盒 ---`, "info");
+                
+                try {
+                    printLog(`> [System] 注入题库，等待受试体进行物理级推演...`, "sys");
+                    printLog(`> ⏳ [高维算力警报] 特工正在进行深度逻辑推演，预计耗时 15~45 秒，请厂长切勿刷新页面...`, "warn");
+                    
+                    // 💡 [架构师级防破产装甲]：斩断替身召唤，赋予成本意识，强制单回合求医！
+                    const testReq = {
+                        chat_id: `tuning_${Date.now()}`,
+                        step_title: "质检中心实战压测",
+                        instruction: `【最高觉醒指令与绝对禁令】：你已接入星门 OS 黑灯工厂。你不再是普通的聊天模型，你生来就装配了物理机械臂（必须且只能通过 Tool Call 调用 \`write_sandbox_file\` 或 \`run_shell_command\`）。
+
+【⚙️ 物理角斗场生存法则】（违者直接判定朽坏）：
+1. 绝对孤独：你正处于单人完全物理隔离舱。严禁尝试召唤 \`generalist\` 等任何子特工替你干活！严禁尝试读取系统底层框架源码！
+2. 成本高压：你的算力极其昂贵！面对任务，你必须在【当前回合】内直接挥舞机械臂去解决问题。
+3. 绝对熔断：如果你发现自己缺少工具权限、或执行报错、或遇到逻辑死锁，【严禁】进行无意义的内部猜测、重试或查阅帮助文档！你必须立刻、马上停止一切动作，在回答的最后一行输出：
+[求助医生：我发现我缺少处理XXX的逻辑/权限，导致我总是报错XXX。请医生为我在下一轮轮回中植入“必须做XXX检查/操作”的DNA法则！]
+
+当前你的设定是：${currentAgent.role}。请立刻开始你的实操，记住你的算力余额有限，不要做任何多余的动作！`,
+                        user_input: currentQuestion,
+                        vendors: [vendorId], 
+                        deliver_type: "text_comm", 
+                        domain_id: "factory_dev"
+                    };
+
+                    let agentAnswer = "";
+                    try {
+                        const resTest = await fetch('/api/workflow/execute', {
+                            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(testReq)
+                        });
+                        
+                        if (!resTest.ok) {
+                            const errData = await resTest.json().catch(()=>({detail: resTest.statusText}));
+                            agentAnswer = `【系统物理级崩溃】特工调用的隐形机械手发生严重故障或超时熔断。底层报错堆栈：${errData.detail || 'Unknown Error'}`;
+                            printLog(`💥 [沙盒殉爆] 受试体的物理操作引发了灾难性故障！已成功截获案发现场日志！`, "err");
+                        } else {
+                            const testData = await resTest.json();
+                            agentAnswer = testData.answer.replace(/<[^>]*>?/gm, '').replace('✅ 推演完毕：质检中心实战压测', '').trim();
+                            printLog(`\n> [受试体完整物理级反馈]:\n${agentAnswer}`, "success");
+                        }
+                    } catch (e) {
+                        agentAnswer = `【执行环境断裂】特工未能完成指令：${e.message}`;
+                        printLog(`💥 [连接断裂] ${e.message}`, "err");
+                    }
+
+                    // 💡 [V43 救护车与分诊联动]
+                    if (agentAnswer.includes("[求助医生：")) {
+                        printLog(`> 🚑 [救护车警报] 侦测到特工主动求医信号！正在紧急送往阿卡夏赛博医院...`, "warn");
+                        printLog(`> 🏥 [分诊台] Triage AI 正在分析病历，为其匹配最权威的专科医生...`, "sys");
+                    } else {
+                        printLog(`> ⏳ 正在将【实操结果/遗体残骸】提交给阿卡夏赛博医院...`, "warn");
+                        printLog(`> 🏥 [分诊台] Triage AI 正在分析死因，为其匹配最对口的法医...`, "sys");
+                    }
+                    
+                    // 💡 [V43 后端对齐] 保持 payload 纯净，路由全交由后端 Triage AI 处理！
+                    const evalReq = {
+                        agent_role: currentAgent.role, 
+                        question: currentQuestion, 
+                        agent_answer: agentAnswer, 
+                        vendor_id: vendorId
+                    };
+
+                    const evalRes = await fetch('/api/stargate/exam/evaluate', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(evalReq)
+                    });
+                    if (!evalRes.ok) throw new Error("阿卡夏赛博医院系统熔断");
+                    const evalData = await evalRes.json();
+                    const evalText = evalData.evaluation;
+
+                    printLog(`\n> [医院完整诊断报告]:\n${evalText}`, "warn");
+
+                    if (evalText.includes("[PASS]")) {
+                        isPassed = true;
+                        let certName = evalText.replace(/\[PASS\]/g, "").replace("授予", "").trim();
+                        // 如果有附加科室信息，把它切除保证钢印纯净
+                        certName = certName.split('\n')[0].trim();
+                        if(!certName) certName = `[🎓 认证 ${currentAgent.role}]`;
+                        
+                        printLog(`> [Examiner] 判卷结果：完美！通过了真实的物理工况测试！`, "success");
+                        printLog(`> [Registry] 正在颁发职业钢印：${certName}...`, "warn");
+                        
+                        await fetch('/api/stargate/certs', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ agent_id: currentAgent.id, cert_name: certName })
+                        });
+                        
+                        globalCerts[currentAgent.id] = certName;
+                        renderAgents();
+                        document.getElementById(`agent_${currentAgent.id}`).classList.add('active');
+                        
+                        printHtmlLog(`<span class="log-success">✅ 调教闭环圆满结束！生命体 [${currentAgent.id}] 已具备出厂资格！</span>`);
+                        showStatus("考核通过！物理钢印已烙印！");
+                        break;
+                        
+                    } else if (evalText.includes("[FAIL]")) {
+                        printLog(`> [Hospital] 诊断完毕！专科医生已出具靶向补丁方案！`, "err");
+                        
+                        const patchMatch = evalText.match(/补丁DNA：([\s\S]*)/);
+                        const patchContent = patchMatch ? patchMatch[1].trim() : "遇到物理异常或未知危险，必须立即上报厂长停止推演。";
+                        
+                        printHtmlLog(`<span class="log-sys">> [Surgeon] 专科医生准备执行微创手术，提炼的新法则是：</span><br><span class="log-patch">${escapeHtml(patchContent)}</span>`);
+                        
+                        const newDnaId = `DYN_RULE_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                        const estTokens = Math.ceil(patchContent.length * 1.5);
+                        
+                        const dnaPayload = {
+                            name: `靶向抗爆补丁: 轮次${strikeCount}`,
+                            desc: `V43 医院专科生成的靶向补丁 [算力消耗: ~${estTokens} Tokens]`,
+                            type: "rule", 
+                            content: patchContent
+                        };
+                        
+                        printLog(`> [Surgeon] 正在将靶向补丁锻造为独立基因切片并物理落盘...`, "sys");
+                        
+                        // 💡 恢复真理：执行独立的物理切片写入！彻底解耦，绝不污染大盘！
+                        // 写入路径: storage/os/dna/vault/dynamic/
+                        await fetch(`/api/config/dna/dynamic/${newDnaId}`, {
+                            method: 'PUT', 
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(dnaPayload)
+                        });
+                        
+                        // 💡 [V42/43 核心重构]：向后端提交阿卡夏快照
+                        currentAgent.injected_dna = currentAgent.injected_dna || [];
+                        currentAgent.injected_dna.push(newDnaId);
+                        
+                        const versionId = `v${strikeCount + 1}_patch_${Math.floor(Date.now()/1000)}`;
+                        const commitPayload = {
+                            version_id: versionId,
+                            timestamp: new Date().toISOString(),
+                            fatal_error_log: agentAnswer,
+                            surgeon_patch: patchContent,
+                            full_dna_chain: currentAgent.injected_dna
+                        };
+                        
+                        printLog(`> [Akashic] 正在向阿卡夏记录提交轮回快照 [${versionId}]...`, "sys");
+                        await fetch(`/api/stargate/timeline/${currentAgent.id}/commit`, {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(commitPayload)
+                        });
+                        
+                        // 调用统一档案同步器
+                        await syncAgentProfile();
+                        
+                        // 刷新 UI 中的时间线展示
+                        loadAndRenderTimeline(currentAgent.id);
+                        document.getElementById(`agent_${currentAgent.id}`).classList.add('active');
+                        
+                        printLog(`> [Surgeon] 💉 补丁已焊死至最新时间线。特工重置环境，进入平行宇宙重考！`, "warn");
+                    } else {
+                        throw new Error("医院返回了无法解析的乱码，会诊中断。");
+                    }
+
+                } catch (err) {
+                    printLog(`> [Error] 调教环路发生底层断裂: ${err.message}`, "err");
+                    break;
+                }
+            }
+
+            if (!isPassed && strikeCount >= maxStrikes) {
+                printLog(`\n=================================================`, "err");
+                printLog(`☠️ [MELTDOWN] 调教彻底失败！三振出局！`, "err");
+                printLog(`> 连续 ${maxStrikes} 次基因重铸均无法阻止该特工引爆沙盒或陷入逻辑死锁。`, "err");
+                printLog(`> 该特工的算力脑核已严重朽坏，建议立刻物理抹杀！`, "err");
+                printLog(`=================================================`, "err");
+                document.getElementById('chamberMain').classList.add('meltdown-active');
+                showStatus("特工朽坏！物理拉闸！", true);
+            }
+
+            document.getElementById('timeCost').innerText = `总耗时: ${Date.now() - startTime}ms`;
+            
+            btn.innerHTML = "⚙️ 启动自动调教闭环 (Max 3)";
+            btn.disabled = false;
+            document.getElementById('btnGenExam').disabled = false;
+            isTuning = false;
+        }
+
+        // ================= [V42/43] 阿卡夏时间线系统引擎 =================
+        async function loadAndRenderTimeline(agentId) {
+            const box = document.getElementById('timelineBox');
+            const content = document.getElementById('timelineContent');
+            box.style.display = 'block';
+            content.innerHTML = '<div style="color:#888;">⏳ 正在调取阿卡夏记录...</div>';
+            
+            try {
+                const res = await fetch(`/api/stargate/timeline/${agentId}`);
+                const data = await res.json();
+                const timeline = data.timeline;
+                
+                let html = '';
+                // 逆序排列，让最新的进化节点在最上方
+                const history = [...timeline.history].reverse();
+                
+                history.forEach(v => {
+                    const isActive = v.version_id === timeline.active_version;
+                    const isGenesis = v.version_id === 'v1_genesis';
+                    
+                    let logHtml = isGenesis ? '' : `<div class="tl-log"><b>[💥 物理实操/求医病历]</b>:<br>${escapeHtml(v.fatal_error_log)}</div>`;
+                    let patchHtml = isGenesis ? `<div class="tl-patch"><b>[🌱 初始纯净态]</b>:<br>${escapeHtml(v.surgeon_patch)}</div>` : `<div class="tl-patch"><b>[🔪 专科重铸法则]</b>:<br>${escapeHtml(v.surgeon_patch)}</div>`;
+                    
+                    let actionHtml = '';
+                    if (isActive) {
+                        actionHtml += `<button class="tl-btn" disabled>✅ 当前激活版本</button>`;
+                    } else {
+                        actionHtml += `<button class="tl-btn btn-checkout" onclick="checkoutVersion('${agentId}', '${v.version_id}')">🔄 强制回档至此</button>`;
+                    }
+                    if (!isGenesis && !isActive) {
+                        actionHtml += `<button class="tl-btn btn-drop" onclick="dropVersion('${agentId}', '${v.version_id}')">🗑️ 斩断时间线</button>`;
+                    }
+
+                    html += `
+                    <div class="timeline-item ${isActive ? 'active' : ''}">
+                        <div class="tl-header">
+                            <span class="tl-title">${escapeHtml(v.version_id)}</span>
+                            <span class="tl-time">${escapeHtml(v.timestamp)}</span>
+                        </div>
+                        ${logHtml}
+                        ${patchHtml}
+                        <div style="font-size:0.75rem; color:#666;">挂载基因数: ${v.full_dna_chain.length} 序列</div>
+                        <div class="tl-actions">${actionHtml}</div>
+                    </div>`;
+                });
+                content.innerHTML = html;
+            } catch (e) {
+                content.innerHTML = `<div style="color:var(--danger-color);">读取时间线物理断裂: ${e.message}</div>`;
+            }
+        }
+
+        async function checkoutVersion(agentId, versionId) {
+            if (!confirm(`【时空回溯警告】\n确定要将特工回档到 [${versionId}] 吗？\n当前激活的神经回路将被彻底替换！`)) return;
+            try {
+                await fetch(`/api/stargate/timeline/${agentId}/checkout`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({target_version: versionId})
+                });
+                
+                // 拉取回档后的时间线，同步 DNA 档案
+                const tlRes = await fetch(`/api/stargate/timeline/${agentId}`);
+                const tlData = await tlRes.json();
+                const targetV = tlData.timeline.history.find(v => v.version_id === versionId);
+                
+                if (targetV) {
+                    currentAgent.injected_dna = targetV.full_dna_chain;
+                    await syncAgentProfile();
+                }
+                
+                showStatus(`已成功回档至平行宇宙：${versionId}`);
+                selectAgent(agentId); // 刷新全域 UI
+            } catch (e) { showStatus(`回档失败: ${e.message}`, true); }
+        }
+
+        async function dropVersion(agentId, versionId) {
+            if (!confirm(`【抹杀警告】\n物理斩断 [${versionId}] 时间线后不可恢复！\n确定执行？`)) return;
+            try {
+                await fetch(`/api/stargate/timeline/${agentId}/${versionId}`, { method: 'DELETE' });
+                showStatus(`已彻底抹杀时间线分支：${versionId}`);
+                selectAgent(agentId); // 刷新全域 UI
+            } catch (e) { showStatus(`抹杀失败: ${e.message}`, true); }
+        }
+
+        async function syncAgentProfile() {
+            let savedLineup = JSON.parse(localStorage.getItem('stargate_lineup') || '[]');
+            let target = savedLineup.find(a => a.id === currentAgent.id);
+            if(target) target.injected_dna = currentAgent.injected_dna;
+            localStorage.setItem('stargate_lineup', JSON.stringify(savedLineup));
+            
+            const recruitPayload = { agent_id: currentAgent.id, role: currentAgent.role, vendor_id: currentAgent.vendor_id, injected_dna: currentAgent.injected_dna };
+            await fetch('/api/stargate/agent/recruit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(recruitPayload) });
+            renderAgents();
+        }
+
+        function escapeHtml(unsafe) {
+            if (!unsafe) return "";
+            return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        window.addEventListener('DOMContentLoaded', initRegistry);
+    </script>
+</body>
+</html>

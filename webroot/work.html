@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI 智能工厂 - 全域逻辑流生产线 (CLI 主力驱动)</title>
+    <link rel="stylesheet" href="/style.css?v=999">
+    <link rel="stylesheet" href="/work.css?v=1.0">
+</head>
+<body>
+    <div class="header">
+        <a href="/" style="color:#eee; text-decoration:none; font-size:0.95rem; display:flex; align-items:center; gap:5px; font-weight:bold;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> 主控
+        </a>
+        <div id="current-workflow-indicator" style="color:var(--accent-color); font-size:0.85rem; border:1px solid rgba(168,199,250,0.4); padding:4px 12px; border-radius:20px; background:rgba(168,199,250,0.1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30vw; font-weight:bold;">草稿状态</div>
+        <div class="header-btns">
+            <button class="ai-gen-btn" onclick="openAIGenModal()">✨ AI 智能编排</button>
+            
+            <div class="dropdown">
+                <button class="dropdown-btn" onclick="toggleDropdown()">操作 ▾</button>
+                <div id="actionDropdown" class="dropdown-content">
+                    <button onclick="document.getElementById('file-import').click()">📂 导入本地流</button>
+                    <button onclick="exportWorkflow()">💾 导出至本地</button>
+                    <button onclick="showLoadModal()">☁️ 云端流仓库</button>
+                    <button onclick="saveAndDeploy()" style="color:var(--accent-color); font-weight:bold;">🚀 保存并部署</button>
+                </div>
+            </div>
+            <input type="file" id="file-import" accept=".json" style="display: none;">
+        </div>
+    </div>
+
+    <div class="viewport" id="viewport">
+        <div id="canvas">
+            <svg id="svg-layer"></svg>
+        </div>
+    </div>
+
+    <div id="minimap-container" class="collapsed">
+        <div class="minimap-header" onclick="toggleMinimap()">
+            <span id="minimap-title">🗺️ 导航全景图</span>
+            <span id="minimap-toggle-icon">▼</span>
+        </div>
+        <div id="minimap-canvas"></div>
+    </div>
+
+    <div class="modal-overlay" id="modal-load">
+        <div class="template-modal">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                <h3 style="margin:0; color:var(--accent-color); font-size: 1.2rem;">云端流仓库</h3>
+                <span style="cursor:pointer; font-size:1.8rem; color:#666;" onclick="closeModal('modal-load')">×</span>
+            </div>
+            <ul class="template-list" id="template-list"></ul>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-ai-gen">
+        <div class="template-modal">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                <h3 style="margin:0; color:#d8b4fe; font-size: 1.2rem;">✨ AI 智能生成工作流</h3>
+                <span style="cursor:pointer; font-size:1.8rem; color:#666;" onclick="closeModal('modal-ai-gen')">×</span>
+            </div>
+            
+            <div style="margin-bottom: 15px; background: rgba(216, 180, 254, 0.05); border: 1px dashed rgba(216, 180, 254, 0.3); padding: 10px; border-radius: 8px;">
+                <div style="font-size: 0.75rem; color: #d8b4fe; margin-bottom: 4px; font-weight: bold;">🧠 已挂载底层节点拓扑规则 (System Override)</div>
+                <div style="font-size: 0.7rem; color: #888; line-height: 1.4;">系统将在后台自动约束 AI 输出标准 DAG 结构，确保 100% 兼容画布。</div>
+                <textarea id="ai-gen-system-prompt" style="display:none;">
+【最高工作流锻造法则】
+你是一个高级系统架构师。请根据用户的需求，自动生成一个工作流。
+你必须输出且仅输出一个合法的 JSON 代码块 (```json ... ```)。绝不允许有任何废话。
+
+【💥 致命错误防御守则 (严格遵守)】
+1. 算力指派不能空：每个节点的 `selectedAIs` 数组必须填入上方资源池中提供的【模型ID】！绝对不能留空（不能是 []）！
+2. 指令不能空：`instruction` 必须详细写明该节点具体要执行的提示词！
+3. 防并发雪崩：如果要顺次执行重型任务，必须给后续节点设置递增的 `delay_seconds`！例如：节点1延时0，节点2延时15，节点3延时30... 错峰执行才能保护系统！
+4. 📄 实体资产锻造与高压任务法则：如果厂长要求生成/修改实体文档、执行复杂代码、或执行长耗时操作，你必须：
+   - 严格从上方花名册中挑选一个【架构】标识为 "💻 物理机床(无网/硬核执行)" (即 CLI 模式) 的引擎ID，填入 `selectedAIs`。
+   - 在 `instruction` 中明确命令 AI 编写 Python 脚本操作文件，并保存到 `/app/workspace/` 目录下。
+   - 必须在 `instruction` 的末尾加上这句极其重要的系统命令：“任务完成后，你必须在最后一行严格输出 [[ASSET:/app/workspace/生成的文件名.后缀]]，以便总厂抓取！”
+
+必须绝对符合以下工作流骨架：
+{
+  "name": "自动生成的工作流名称",
+  "nodes": [
+    {
+      "id": "唯一节点ID (如 n_1)",
+      "type": "节点类型 (主干必须填 major, 向下并行的分支必须填 sub)",
+      "title": "节点短名称",
+      "instruction": "详细的执行指令，绝不可为空",
+      "workMode": "recognition 或 creation",
+      "inputType": "nature_chat", 
+      "deliverType": "text_comm",
+      "delay_seconds": 0, 
+      "requiresReview": false,
+      "selectedAIs": ["此处必须填入模型ID"],
+      "injected_dna": ["这里填入你挑选的基因ID"] 
+    }
+  ],
+  "edges": [
+    { "source": "源节点ID", "target": "目标节点ID", "type": "major 或 sub" }
+  ]
+}
+注意：请绝对不要把属性包裹在 "data" 里面！全部放在 node 的同级根目录下！
+                </textarea>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.8rem; color: #aaa;">选择用来编排的主脑：</label>
+                <div class="form-row" style="margin-top: 5px;">
+                    <select id="ai-gen-vendor" style="width: 100%; padding: 10px; background:#000; border:1px solid #444; color: #eee; border-radius: 8px;"></select>
+                </div>
+            </div>
+            
+            <textarea id="ai-gen-prompt" style="width: 100%; box-sizing: border-box; background: #000; color: #fff; border: 1px solid #444; border-radius: 8px; padding: 12px; font-size: 0.9rem; min-height: 100px; resize: vertical;" placeholder="描述您想要的工作流逻辑。例如：用 CLI 做一个爬虫应用，先用蜂群清洗，再触发星门任务后台研发代码..."></textarea>
+            
+            <button id="btn-execute-ai-gen" class="save-btn" style="width: 100%; margin-top: 15px; background: linear-gradient(135deg, #a8c7fa 0%, #d8b4fe 100%); font-size:1rem; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;" onclick="executeAIGen()">💡 一键生成网络</button>
+        </div>
+    </div>
+
+    <div class="overlay-dock" id="ai-dock">
+        <div class="dock-header">
+            <div>
+                <div style="font-weight:bold; font-size:1.2rem;">为该节点指派大脑或星门 CLI</div>
+                <div style="font-size:0.8rem; color:#888; margin-top:6px;">支持多选！系统将并行触发并让您挑选最优解。</div>
+            </div>
+            <button class="save-btn" style="background:var(--accent-color); border:none; padding:8px 16px; border-radius:8px; font-weight:bold; cursor:pointer;" onclick="closeDock()">完成指派</button>
+        </div>
+        <div class="dock-grid" id="ai-grid"></div>
+    </div>
+
+    <div id="properties-panel" class="side-panel collapsed">
+        <div id="node-basic-properties"></div>
+        
+        <div class="prop-group" style="margin-top: 20px; border-top: 1px dashed #444; padding-top: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label style="color: #20c997; font-weight: bold;">🧬 挂载的基因序列 (DNA)</label>
+                <button onclick="openDnaPicker()" style="background: rgba(32,201,151,0.1); border: 1px solid #20c997; color: #20c997; border-radius: 4px; cursor: pointer; font-size: 0.75rem; padding: 4px 8px; font-weight: bold;">
+                    + 注入基因
+                </button>
+            </div>
+            <div id="node-dna-pills" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px; min-height:45px; padding:10px; background:rgba(0,0,0,0.3); border-radius:8px; border:1px dashed #444; align-content: flex-start;">
+                </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-top: 1px dashed #444; padding-top: 15px;">
+                <label style="color: #666; font-weight: bold;">🔧 物理微操 (强行覆写)</label>
+            </div>
+            <div style="font-size: 0.7rem; color: #666; margin-bottom: 8px;">
+                ⚠️ 警告：在此填写内容将彻底覆盖上述 DNA 序列，强行向节点注入纯文本指令。
+            </div>
+            <textarea id="node-custom-prompt" 
+                style="width: 100%; box-sizing: border-box; background: #050505; color: #888; border: 1px solid #333639; border-radius: 8px; padding: 12px; font-size: 0.85rem; font-family: 'Courier New', monospace; min-height: 100px; resize: vertical;" 
+                placeholder="极客通道：输入纯文本以绝对支配该节点..."></textarea>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-dna-picker">
+        <div class="template-modal">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                <h3 style="margin:0; color:#20c997; font-size: 1.2rem;">🧬 提取系统基因</h3>
+                <span style="cursor:pointer; font-size:1.8rem; color:#666;" onclick="closeModal('modal-dna-picker')">×</span>
+            </div>
+            <div id="dna-picker-list" style="max-height: 350px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
+                </div>
+        </div>
+    </div>
+
+    <div id="ouroborosModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(8px);">
+        <div style="background:var(--bg-panel, #141518); width:90%; max-width:700px; border-radius:12px; border:1px solid #ff6b6b; padding:25px; box-shadow: 0 0 40px rgba(255,107,107,0.3); display:flex; flex-direction:column; max-height:90vh;">
+            
+            <h3 style="color:#ff6b6b; margin-top:0; display:flex; align-items:center; gap:10px;">
+                <span style="animation: pulse 1.5s infinite;">🚨</span> 节点逃逸阻断与自检研判舱
+            </h3>
+            
+            <div style="background:#0a0a0c; border:1px solid #333; padding:15px; border-radius:8px; margin-bottom:15px; font-family:monospace; font-size:0.85rem; color:#aaa;">
+                <div><b>故障节点:</b> <span id="ob-node-id" style="color:#d8b4fe;"></span></div>
+                <div><b>载体机床:</b> <span id="ob-machine-id" style="color:#a8c7fa;"></span></div>
+                <div><b>现场快照:</b> <span id="ob-session-id" style="color:#888;"></span></div>
+            </div>
+
+            <div style="flex:1; overflow-y:auto; background:#000; border:1px inset #222; border-radius:8px; padding:15px; margin-bottom:15px; font-family:monospace; font-size:0.85rem; line-height:1.6;" id="ob-console-output">
+                <span style="color:#888;">正在等待深度自检指令...</span>
+            </div>
+
+            <div style="display:flex; gap:15px; justify-content:space-between; flex-shrink:0;">
+                <button onclick="closeOuroborosModal()" style="flex:1; padding:12px; background:transparent; border:1px solid #555; color:#aaa; border-radius:8px; cursor:pointer; transition:0.2s;">忽略并取消</button>
+                <button id="ob-btn-diagnose" onclick="startAutonomousHealing()" style="flex:2; padding:12px; background:linear-gradient(135deg, #ff6b6b 0%, #ff4757 100%); color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer; transition:0.2s;">
+                    🧠 授权首席诊断师提取快照并生成抗体
+                </button>
+                <button id="ob-btn-apply" onclick="applyGeneratedPatch()" style="flex:2; padding:12px; background:linear-gradient(135deg, #20c997 0%, #0ca678 100%); color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer; display:none; transition:0.2s;">
+                    💉 确认落盘并热更新流水线
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/work.js?v=1.0"></script>
+    
+    <script>
+        // ================= 👇 【锚点二】：Ouroboros 核心 JS 逻辑 👇 =================
+        
+        // 1. 全局缓存 DNA 库
+        let globalDNAVault = [];
+        async function fetchDNAVault() {
+            try {
+                const res = await fetch('/api/config/dna');
+                if (res.ok) {
+                    const data = await res.json();
+                    globalDNAVault = Array.isArray(data.vault) ? data.vault : [];
+                }
+            } catch (e) { console.error("基因库拉取失败", e); }
+        }
+
+        // 页面加载完成即载入基因库
+        window.addEventListener('load', () => {
+            fetchDNAVault();
+        });
+
+        // 2. 生成基因选择器的 HTML
+        function renderDNASlotUI(currentInjected = [], overrideBase = false) {
+            let optionsHtml = '';
+            globalDNAVault.forEach(dna => {
+                const isSelected = currentInjected.includes(dna.id) ? 'selected' : '';
+                const icon = dna.type === 'identity' ? '👤' : (dna.type === 'sop' ? '⚙️' : '🚨');
+                optionsHtml += `<option value="${dna.id}" ${isSelected}>${icon} ${dna.name} (${dna.id})</option>`;
+            });
+
+            return `
+                <div class="node-dna-config" style="margin-top: 15px; padding: 10px; background: rgba(216, 180, 254, 0.05); border: 1px solid #d8b4fe; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <label style="color: #d8b4fe; font-weight: bold; font-size: 0.85rem;">🧬 运行时基因注入 (injected_dna)</label>
+                        <label style="font-size: 0.75rem; color: #ff6b6b; cursor: pointer; display: flex; align-items: center; gap: 4px;" title="勾选后将无视机床预设，彻底重塑灵魂">
+                            <input type="checkbox" class="node-override-base" ${overrideBase ? 'checked' : ''}>
+                            ⚠️ 剥离出厂预设 (真空躯壳)
+                        </label>
+                    </div>
+                    <select multiple class="node-dna-select" style="width: 100%; background: #000; color: #fff; border: 1px solid #555; padding: 5px; height: 80px; font-family: monospace; font-size: 0.8rem; outline:none;">
+                        ${optionsHtml}
+                    </select>
+                </div>
+            `;
+        }
+
+        // 3. 自检系统状态暂存
+        let obContext = { workflowId: null, nodeId: null, machineId: null, sessionId: null, patch: null };
+        function triggerOuroborosProtocol(workflowId, errorData) {
+            obContext = { 
+                workflowId: workflowId, 
+                nodeId: errorData.node_id, 
+                machine_id: errorData.machine_id, 
+                session_id: errorData.session_id,
+                patch: null 
+            };
+            document.getElementById('ob-node-id').innerText = errorData.node_id;
+            document.getElementById('ob-machine-id').innerText = errorData.machine_id;
+            document.getElementById('ob-session-id').innerText = errorData.session_id;
+            document.getElementById('ob-console-output').innerHTML = `<span style="color:#ff6b6b;">${errorData.message}</span><br><br>系统已锁定案发现场快照，随时可进行深度自检。`;
+            
+            document.getElementById('ob-btn-diagnose').style.display = 'block';
+            document.getElementById('ob-btn-diagnose').disabled = false;
+            document.getElementById('ob-btn-apply').style.display = 'none';
+            document.getElementById('ouroborosModal').style.display = 'flex';
+        }
+        function closeOuroborosModal() { document.getElementById('ouroborosModal').style.display = 'none'; }
+
+        // 4. 召唤首席诊断师
+        async function startAutonomousHealing() {
+            const consoleOut = document.getElementById('ob-console-output');
+            const btnDiag = document.getElementById('ob-btn-diagnose');
+            btnDiag.disabled = true;
+
+            try {
+                consoleOut.innerHTML = "<span style='color:#a8c7fa;'>[1/3] 正在搜寻系统内部最高阶算力节点...</span><br>";
+                const aiRes = await fetch('/api/config/ai');
+                const aiData = await aiRes.json();
+                
+                let chiefPhysician = null;
+                for (let cat of (aiData.categories || [])) {
+                    const advNode = cat.nodes.find(n => n.isAdvanced && n.enabled !== false && n.key);
+                    if (advNode) { chiefPhysician = advNode; break; }
+                }
+                if (!chiefPhysician) throw new Error("未找到可用的高阶算力(isAdvanced)作为诊断师。");
+                consoleOut.innerHTML += `<span style='color:#20c997;'>找到首席诊断师：[${chiefPhysician.name}]。</span><br><br>`;
+
+                consoleOut.innerHTML += "<span style='color:#a8c7fa;'>[2/3] 正在穿透读取容器崩溃前遥测快照...</span><br>";
+                const logRes = await fetch(`/api/diagnostics/logs/${obContext.session_id}`);
+                if(!logRes.ok) throw new Error("无法读取该任务底层快照。");
+                const logData = await logRes.json();
+                const chatHistoryStr = JSON.stringify(logData.history, null, 2);
+                consoleOut.innerHTML += `<span style='color:#20c997;'>快照提取成功。</span><br><br>`;
+
+                consoleOut.innerHTML += "<span style='color:#d8b4fe;'>[3/3] 诊断师正在分析故障，现场搓写赛博镣铐...</span><br>";
+                const sysPrompt = `你是一个顶级安全架构师与系统诊断师。分析下方失败的任务对话快照，找出导致失败的逻辑缺陷。然后生成一个修补用的JSON，提炼出新的 Rule (红线) 或 SOP。
+        【绝对强制】：只输出JSON，格式如下：
+        {
+          "analysis": "【自检报告】：发现问题...",
+          "proposed_dnas": [
+            { "id": "大写英文ID", "type": "rule或sop或identity", "name": "带Emoji中文名", "content": "内容..." }
+          ],
+          "requires_new_preset": false,
+          "new_preset_id": null
+        }`;
+
+                const res = await fetch(chiefPhysician.url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${chiefPhysician.key}` },
+                    body: JSON.stringify({
+                        model: chiefPhysician.name,
+                        messages: [{ role: "system", content: sysPrompt }, { role: "user", content: `【现场遥测快照】：\n${chatHistoryStr}` }],
+                        temperature: 0.1 
+                    })
+                });
+
+                if(!res.ok) throw new Error("诊断师请求失败");
+                const data = await res.json();
+                const reply = data.choices[0].message.content.trim();
+                const match = reply.match(/\{[\s\S]*\}/);
+                if (!match) throw new Error("未返回合法 JSON。");
+                
+                obContext.patch = JSON.parse(match[0]);
+                
+                consoleOut.innerHTML = `
+                    <div style="color:#ff6b6b; font-size:1rem; margin-bottom:10px;">📋 诊断结论：</div>
+                    <div style="color:#eee; margin-bottom:20px; border-left:3px solid #ff6b6b; padding-left:10px;">${obContext.patch.analysis}</div>
+                    <div style="color:#20c997; font-size:1rem; margin-bottom:10px;">💉 提炼抗体：</div>
+                    ${obContext.patch.proposed_dnas.map(dna => `<div style="background:rgba(32,201,151,0.1); padding:8px; border-left:3px solid #20c997; margin-bottom:5px;"><b>[${dna.id}]</b> ${dna.name}</div>`).join('')}
+                    ${obContext.patch.requires_new_preset ? `<div style="color:#a8c7fa; margin-top:10px;">🔄 建议替换机床出厂预设为：${obContext.patch.new_preset_id}</div>` : ''}
+                `;
+                btnDiag.style.display = 'none';
+                document.getElementById('ob-btn-apply').style.display = 'block';
+            } catch (error) {
+                consoleOut.innerHTML += `<br><span style='color:#ff6b6b;'>❌ 诊断中断：${error.message}</span>`;
+                btnDiag.disabled = false;
+            }
+        }
+
+        // 5. 确认落盘
+        async function applyGeneratedPatch() {
+            const btnApply = document.getElementById('ob-btn-apply');
+            const consoleOut = document.getElementById('ob-console-output');
+            btnApply.disabled = true; btnApply.innerText = "⏳ 正在热更新全域配置...";
+            try {
+                const payload = {
+                    workflow_id: obContext.workflowId, node_id: obContext.nodeId,
+                    target_machine_id: obContext.machine_id, new_dnas: obContext.patch.proposed_dnas,
+                    new_preset_id: obContext.patch.new_preset_id
+                };
+                const res = await fetch('/api/workflow/auto_patch', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                if(!res.ok) throw new Error("后端注射泵拒绝了热更新请求。");
+                consoleOut.innerHTML = `<h2 style="color:#20c997; text-align:center; margin-top:20px;">✅ 基因重组完成，机床已恢复免疫力！</h2>`;
+                setTimeout(() => { closeOuroborosModal(); location.reload(); }, 2000);
+            } catch (e) {
+                consoleOut.innerHTML += `<br><span style='color:#ff6b6b;'>❌ 热更新失败：${e.message}</span>`;
+                btnApply.disabled = false; btnApply.innerText = "💉 确认落盘并热更新流水线";
+            }
+        }
+        // ================= 👆 【锚点二】：Ouroboros 核心 JS 逻辑 👆 =================
+    </script>
+</body>
+</html>

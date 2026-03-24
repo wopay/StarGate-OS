@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>👑 黑灯工厂 · 歼星舰指挥所</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
+    
+    <script src="custom_marked.js"></script>
+    
+    <link rel="stylesheet" href="boss.css">
+</head>
+<body>
+
+    <div class="header">
+        <a href="index.html" style="text-decoration: none; color: inherit;">
+            <h1>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                FACTORY OVERSEER
+            </h1>
+        </a>
+    </div>
+
+    <div class="main-layout" id="drag-boundary">
+        
+        <div class="dock-container" id="dock-container">
+            <div id="fab-diagnose" class="fab-drag" title="下放架构自检" onclick="if(!this.isDragging) openOSWindow('fw-diagnose')">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <span>自检</span>
+            </div>
+
+            <div id="fab-stargate" class="fab-drag" title="开启高维星门" onclick="if(!this.isDragging) openOSWindow('fw-stargate')">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                <span>星门</span>
+            </div>
+
+            <div id="fab-factory2" class="fab-drag" title="呼叫二厂代码重构" onclick="if(!this.isDragging) openOSWindow('fw-factory2')">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                <span>二厂</span>
+            </div>
+
+            <div id="fab-radar" class="fab-drag" title="全域探头与审计中心" onclick="if(!this.isDragging) openOSWindow('fw-radar')">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+                <span>监控</span>
+            </div>
+            
+            <div id="fab-memory" class="fab-drag" title="接入向量记忆矩阵" onclick="if(!this.isDragging) openOSWindow('fw-memory-matrix')">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent-purple)" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+                <span style="color:var(--accent-purple);">脑核</span>
+            </div>
+        </div>
+
+        <div class="center-stage" style="padding-bottom: 100px;">
+            <div class="microcosm-container" style="height: auto; min-height: 80vh;">
+                <div class="mc-header" style="flex-wrap: wrap; gap: 10px;">
+                    <div class="mc-title">🧠 AI 蜂群微观意识流观测台</div>
+                    
+                    <div style="display:flex; gap:8px; align-items: center; flex-wrap: wrap;">
+                        <div style="font-size: 0.75rem; color: #888; display: flex; align-items: center; gap: 5px; margin-right: 15px;">
+                            <div class="blink" style="width:6px;height:6px;background:var(--accent-purple);border-radius:50%;"></div> 
+                            [慢速巡航模式]
+                        </div>
+                        
+                        <button onclick="toggleMicrocosm('start')" style="background:transparent; border:1px solid var(--accent-cyan); color:var(--accent-cyan); font-size:0.75rem; cursor:pointer; padding:4px 10px; border-radius:4px; font-weight:bold;">▶️ 启动蜂群</button>
+                        
+                        <button onclick="toggleMicrocosm('stop')" style="background:transparent; border:1px solid var(--accent-red); color:var(--accent-red); font-size:0.75rem; cursor:pointer; padding:4px 10px; border-radius:4px; font-weight:bold;">⏸️ 停止排队</button>
+                        
+                        <button onclick="forceFetchThought()" style="background:transparent; border:1px solid #444; color:#aaa; font-size:0.75rem; cursor:pointer; padding:4px 10px; border-radius:4px;">🔄 强制截获一次</button>
+                    </div>
+                </div>
+                
+                <div id="microcosm-feed" style="flex: 1; overflow-y: visible; padding-top: 15px;"></div>
+                
+            </div>
+        </div>
+
+        <div id="fw-stargate" class="os-window theme-stargate" style="left: 20%; top: 15%; height: 500px; display:none;">
+            <div class="fw-header" id="header-stargate">
+                <span class="fw-title">
+                    <div class="blink" style="width:8px;height:8px;background:var(--accent-cyan);border-radius:50%;"></div>
+                    STARGATE // 零号直连
+                    <span class="model-badge" id="badge-stargate">算力: 兜底分配</span>
+                </span>
+                <div style="display:flex; gap:10px;">
+                    <button class="dl-btn" style="color:var(--accent-cyan); border-color:var(--accent-cyan);" onclick="downloadChatLog('chat-stargate', '星门日志')">💾 下载</button>
+                    <button class="cp-close" onclick="closeOSWindow('fw-stargate')">✖</button>
+                </div>
+            </div>
+            <div class="fw-body" id="chat-stargate">
+                <div style="color:#555;">> 量子纠缠[OK] <br>> 厂长已获沙盒穿透权限。</div>
+            </div>
+            <div class="fw-input-area">
+                <div class="fw-tools">
+                    <span id="preview-stargate" style="color:#888; font-size:0.75rem;"></span>
+                    <label class="upload-btn">📎 附加资产<input type="file" style="display:none;" onchange="handleUpload(this, 'preview-stargate')"></label>
+                </div>
+                <div class="fw-textarea-wrapper">
+                    <span style="color:var(--accent-cyan); font-weight:bold; font-size:1.1rem; line-height:28px;">root:~#</span>
+                    <textarea id="input-stargate" placeholder="输入系统指令 (Shift+Enter 换行, Enter 执行)..." onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); sendTerminalMsg('input-stargate', 'chat-stargate', 'boss_stargate_channel', 'sandbox_terminal', '[STARGATE OVERRIDE]: 你处于最高维度的星门信道。直接给出硬核代码或工具执行结果。');}"></textarea>
+                    <button class="fw-send-btn" onclick="sendTerminalMsg('input-stargate', 'chat-stargate', 'boss_stargate_channel', 'sandbox_terminal', '[STARGATE OVERRIDE]: 你处于最高维度的星门信道。直接给出硬核代码或工具执行结果。')">执行</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="fw-factory2" class="os-window theme-factory2" style="left: 35%; top: 25%; height: 500px; display:none;">
+            <div class="fw-header" id="header-factory2">
+                <span class="fw-title">
+                    🏭 FACTORY-02 
+                    <span class="model-badge" id="badge-factory2">算力: 兜底分配</span>
+                </span>
+                <div style="display:flex; gap:10px;">
+                    <button class="dl-btn" style="color:var(--accent-gold); border-color:var(--accent-gold);" onclick="downloadChatLog('chat-factory2', '二厂日志')">💾 下载</button>
+                    <button class="cp-close" onclick="closeOSWindow('fw-factory2')">✖</button>
+                </div>
+            </div>
+            <div class="fw-body" id="chat-factory2">
+                <div class="b-msg ai"><div class="sg-bubble">二厂就位。请下达重构需求。这里是强网隔离的纯血执行区。</div></div>
+            </div>
+            <div class="fw-input-area">
+                <div class="fw-tools">
+                    <span id="preview-factory2" style="color:#888; font-size:0.75rem;"></span>
+                    <label class="upload-btn">📎 上传蓝图<input type="file" style="display:none;" onchange="handleUpload(this, 'preview-factory2')"></label>
+                </div>
+                <div class="fw-textarea-wrapper">
+                    <span style="color:var(--accent-gold); font-weight:bold; font-size:1.1rem; line-height:28px;">dev:~#</span>
+                    <textarea id="input-factory2" placeholder="输入代码需求 (Shift+Enter 换行, Enter 下发)..." onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); sendTerminalMsg('input-factory2', 'chat-factory2', 'boss_capsule_south', 'text_comm', '你是二厂长，一个没有情感的纯血物理机床。分析厂长需求，设计方案。所有交付的代码和文件，必须严格包裹在 `cat << \'EOF\' > /app/inbox/任务名.json` 的标准写盘投递包中。⚠️注意：此类蓝图由UI前端一键下发，绝对禁止在回答末尾输出任何 [[ASSET:...]] 引渡标签！严禁废话。');}"></textarea>
+                    <button class="fw-send-btn" onclick="sendTerminalMsg('input-factory2', 'chat-factory2', 'boss_capsule_south', 'text_comm', '你是二厂长，一个没有情感的纯血物理机床。分析厂长需求，设计方案。所有交付的代码和文件，必须严格包裹在 `cat << \'EOF\' > /app/inbox/任务名.json` 的标准写盘投递包中。⚠️注意：此类蓝图由UI前端一键下发，绝对禁止在回答末尾输出任何 [[ASSET:...]] 引渡标签！严禁废话。')">下发</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="fw-radar" class="os-window theme-radar" style="left: 15%; top: 10%; width: 80vw; height: 80vh; max-width: 1200px; display:none;">
+            <div class="fw-header" id="header-radar">
+                <span class="fw-title">🛰️ 全域阵列雷达监视器</span>
+                <div>
+                    <button class="dl-btn" style="color:#aaa; border-color:#aaa;" onclick="document.getElementById('radar-iframe').src = document.getElementById('radar-iframe').src">🔄 刷新</button>
+                    <button class="cp-close" onclick="closeOSWindow('fw-radar')">✖</button>
+                </div>
+            </div>
+            <div class="fw-body" style="flex-direction: row; padding: 0; overflow: hidden;">
+                <div id="fw-radar-iframe-container" style="flex: 2; border-right: 1px solid #333; display: flex; flex-direction: column; background: #000;">
+                    <iframe id="radar-iframe" src="" width="100%" height="100%" style="border:none; flex: 1;"></iframe>
+                </div>
+                <div class="audit-panel" style="flex: 1; padding: 15px; background: rgba(10,10,12,0.9); display: flex; flex-direction: column; overflow-y: auto;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <div class="stat-box" style="flex:1; background: rgba(0,0,0,0.6); border: 1px dashed #444; padding: 10px; border-radius: 6px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #888;">引渡资产</div>
+                            <div style="font-size: 1.2rem; color: var(--accent-purple); font-weight: bold;" id="asset-count">0</div>
+                        </div>
+                        <div class="stat-box" style="flex:1; background: rgba(0,0,0,0.6); border: 1px dashed #444; padding: 10px; border-radius: 6px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #888;">安全拦截</div>
+                            <div style="font-size: 1.2rem; color: var(--accent-red); font-weight: bold;" id="block-count">0</div>
+                        </div>
+                    </div>
+                    <h3 style="font-size: 0.8rem; color: #fff; border-bottom: 1px dashed #333; padding-bottom: 5px; margin-bottom: 10px;">系统安防日志</h3>
+                    <div id="audit-logs-container" style="font-size: 0.7rem; line-height: 1.6; color: #aaa;">
+                        <div style="padding: 4px 0;"><span style="color: #555;">[系统]</span> <span style="color:var(--accent-cyan);">等待雷达信号接驳...</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="fw-memory-matrix" class="os-window" style="left: 20%; top: 15%; width: 700px; height: 600px; display:none; border-color:var(--accent-purple);">
+            <div class="fw-header" id="header-memory-matrix" style="border-bottom-color:var(--accent-purple);">
+                <span class="fw-title" style="color:var(--accent-purple);">🧠 脑神经编辑器 (Vector Memory Matrix)</span>
+                <div>
+                    <button class="cp-close" onclick="closeOSWindow('fw-memory-matrix')">✖</button>
+                </div>
+            </div>
+            <div class="fw-body" style="display:flex; flex-direction:column; padding:0;">
+                <div style="padding:10px; display:flex; gap:10px; background:#0a0a0c; border-bottom:1px solid #333;">
+                    <select id="mem-type-select" style="background:#222; color:var(--text-main); border:1px solid #444; padding:6px; flex:1;" onchange="loadMemories()">
+                        <option value="sop">🔴 军师大纲库 (SOP Rules) - 绝对潜意识约束</option>
+                        <option value="intel">🔵 战略情报库 (Intel Context) - 异步爬取的事实</option>
+                    </select>
+                    <button onclick="loadMemories()" style="background:#333; color:#fff; border:none; padding:6px 15px; cursor:pointer; border-radius:4px;">🔄 扫描深层脑区</button>
+                </div>
+                <div id="memory-list" style="flex:1; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:10px; background:#050505;">
+                    </div>
+                <div style="padding:15px; border-top:1px dashed #333; background:#0a0a0c;">
+                    <textarea id="new-mem-text" rows="3" placeholder="在此输入新的系统规则或记忆事实 (例如：二厂所有的输出必须是Bash脚本)..." style="width:100%; background:#000; color:#fff; border:1px solid var(--accent-purple); padding:10px; font-family:inherit; margin-bottom:10px; resize:none; outline:none; border-radius:4px; box-sizing:border-box;"></textarea>
+                    <button onclick="injectMemory()" style="width:100%; background:var(--accent-purple); color:#000; font-weight:bold; border:none; padding:10px; cursor:pointer; border-radius:4px;">💉 强制烙印新记忆</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="fw-diagnose" class="os-window" style="left: 10%; top: 10%; width: 400px; height: 550px; display:none;">
+            <div class="fw-header" id="header-diagnose">
+                <span class="fw-title" style="color:var(--accent-gold);">⚙️ 架构自检与控制</span>
+                <button class="cp-close" onclick="closeOSWindow('fw-diagnose')">✖</button>
+            </div>
+            <div class="fw-body" style="justify-content: flex-start;">
+                
+                <div style="background: rgba(0,0,0,0.4); border: 1px dashed #444; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div style="color:var(--accent-cyan); font-weight:bold; font-size:0.85rem; display:flex; align-items:center; gap:6px;">
+                            <div class="blink" style="width:8px;height:8px;background:var(--accent-cyan);border-radius:50%;"></div> 主脑在线
+                        </div>
+                    </div>
+                    <div style="font-size: 0.8rem; color: #4dabf7; margin-bottom: 5px;">🧠 全局算力节点切换:</div>
+                    <select id="boss-model-selector" onchange="updateModelBadges()" style="width: 100%; background: #111; border: 1px solid #444; color: #eee; padding: 8px; border-radius: 4px; outline: none; font-family: inherit; cursor: pointer;">
+                        <option value="">载入中...</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 10px;">
+                    <div style="font-size:0.75rem; color:#888; margin-bottom:10px;">呼叫架构师读取底层源码，分析瓶颈。</div>
+                    <button class="btn-evo" onclick="triggerSysCommand('巡视员', '读取 /app/sandbox_worker.py 源码，分析架构瓶颈并直接给出诊断报告，严禁修改任何代码！')">
+                        🔍 派遣巡视员下放自检
+                    </button>
+                </div>
+
+                <div style="margin-top: auto; border-top: 1px dashed #444; padding-top: 20px;">
+                    <div style="font-size:0.75rem; color:var(--accent-red); margin-bottom:10px; text-align:center;">
+                        ⚠️ <b>高危禁区</b>：擦除全域运行时内存。<br>
+                        <span style="color:#aaa;">请输入 <b>清空记忆</b> 以解锁按键。</span>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="nuke-text" placeholder="键入密码..." oninput="checkNuke()" style="flex:1; background:#000; border:1px solid #444; color:#fff; padding:10px; border-radius:6px; outline:none; text-align:center;">
+                        <button class="btn-nuke" id="nuke-btn" onclick="purgeMemory()" disabled style="padding:10px 20px; border-radius:6px; font-weight:bold;">💥 抹除</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <div id="manage-brain-modal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center;" onclick="if(event.target === this) this.style.display='none'">
+        <div class="modal-content" style="text-align:left; width:400px; background:#1e1f20; padding:20px; border:1px solid var(--accent-cyan); border-radius:12px;">
+            <h3 style="color:#d8b4fe; border-bottom:1px solid #333; padding-bottom:10px; margin-top:0;">
+                🧠 独立大脑配置 <span id="mb-name-display" style="font-size:0.9rem; color:#888;"></span>
+            </h3>
+            
+            <input type="hidden" id="mb-wid">
+            <input type="hidden" id="mb-name">
+            <input type="hidden" id="mb-station">
+            
+            <div style="margin-top:15px;">
+                <label style="color:#aaa; font-size:0.8rem; display:block; margin-bottom:5px;">自运行频率 (分钟/次)</label>
+                <input type="number" id="mb-freq" value="60" style="width:100%; background:#111; border:1px solid #444; color:#fff; padding:8px; border-radius:4px; outline:none; box-sizing:border-box;">
+                <div style="font-size:0.7rem; color:#666; margin-top:4px;">设置它醒来查阅帖子(SOP)并开始干活的周期。</div>
+            </div>
+            
+            <div style="margin-top:15px;">
+                <label style="color:#aaa; font-size:0.8rem; display:block; margin-bottom:5px;">思想钢印 (Personality / Task)</label>
+                <textarea id="mb-steelmark" rows="4" placeholder="例如：你是一个专注于爬取行业数据的探员..." style="width:100%; background:#111; border:1px solid #444; color:#fff; padding:8px; border-radius:4px; outline:none; font-family:monospace; resize:vertical; box-sizing:border-box;"></textarea>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; margin-top:25px;">
+                <button onclick="revokeMemory()" style="background:transparent; border:1px solid var(--accent-red); color:var(--accent-red); padding:8px 15px; border-radius:6px; cursor:pointer;">💀 剥夺特权淘汰</button>
+                <button onclick="saveBrainConfig()" style="background:var(--accent-cyan); color:#000; border:none; padding:8px 25px; border-radius:6px; font-weight:bold; cursor:pointer;">💾 保存配置</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ouroborosModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(8px);">
+        <div style="background:var(--panel-bg, #141518); width:90%; max-width:700px; border-radius:12px; border:1px solid var(--accent-cyan, #20c997); padding:25px; box-shadow: 0 0 40px rgba(32,201,151,0.2); display:flex; flex-direction:column;">
+            <h3 style="color:var(--accent-cyan, #20c997); margin-top:0; display:flex; align-items:center; gap:10px;">
+                <span style="animation: pulse 1.5s infinite;">📡</span> 军师阵列战术评估与升级舱
+            </h3>
+            <div style="background:#0a0a0c; border:1px solid #333; padding:15px; border-radius:8px; margin-bottom:15px; font-family:monospace; font-size:0.85rem; color:#aaa;">
+                <div><b>战略节点:</b> <span id="ob-worker-name" style="color:var(--accent-purple, #d8b4fe);"></span> (<span id="ob-worker-id"></span>)</div>
+                <div style="margin-top:6px;"><b>当前战略钢印:</b> <div id="ob-worker-mark" style="color:#888; background:#000; padding:6px; margin-top:4px; border-radius:4px; max-height:80px; overflow-y:auto;"></div></div>
+            </div>
+            <div style="flex:1; overflow-y:auto; background:#000; border:1px inset #222; border-radius:8px; padding:15px; margin-bottom:15px; font-family:monospace; font-size:0.85rem; line-height:1.6;" id="ob-console-output">
+                <span style="color:#888;">正在等待指挥官下达自检评估指令...</span>
+            </div>
+            <div style="display:flex; gap:15px; justify-content:space-between; flex-shrink:0;">
+                <button onclick="document.getElementById('ouroborosModal').style.display='none'" style="flex:1; padding:12px; background:transparent; border:1px solid #555; color:#aaa; border-radius:8px; cursor:pointer; transition:0.2s;">取消评估</button>
+                <button id="ob-btn-diagnose" onclick="startSwarmHealing()" style="flex:2; padding:12px; background:linear-gradient(135deg, #a8c7fa 0%, #d8b4fe 100%); color:#000; border:none; border-radius:8px; font-weight:bold; cursor:pointer; transition:0.2s;">
+                    🧠 授权主脑推演专属战术补丁
+                </button>
+                <button id="ob-btn-apply" onclick="applySwarmPatch()" style="flex:2; padding:12px; background:linear-gradient(135deg, #20c997 0%, #0ca678 100%); color:#000; border:none; border-radius:8px; font-weight:bold; cursor:pointer; display:none; transition:0.2s;">
+                    📥 确认落盘并升级战略钢印
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="boss.js?v=44"></script>
+</body>
+</html>

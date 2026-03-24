@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>👁️ 星门总控 · 实时全息监视器 (V21.0 满血进化版)</title>
+    <style>
+        :root { 
+            --bg: #050505; --panel: #111; --panel-light: #1a1a1a; 
+            --text: #a8c7fa; --text-dim: #666; 
+            --accent: #20c997; --danger: #ff5f56; --warn: #f1c40f; --purple: #b388ff; 
+            --blue: #3498db; --border: #333; --border-light: #444;
+        }
+        
+        * { box-sizing: border-box; }
+        body { 
+            background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; 
+            margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; 
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+        /* ====== 顶部/中间 分割布局 ====== */
+        .top-matrix { display: flex; flex-grow: 1; min-height: 0; overflow: hidden; }
+
+        /* ====== 左侧：雷达矩阵 ====== */
+        .sidebar { 
+            width: 320px; background: var(--panel); border-right: 1px solid var(--border); 
+            display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s ease;
+        }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; cursor: pointer;}
+        .sidebar-title { font-size: 18px; font-weight: bold; color: var(--accent); text-shadow: 0 0 10px rgba(32, 201, 151, 0.3); margin-bottom: 5px; }
+        .sidebar-subtitle { font-size: 12px; color: var(--text-dim); }
+        .list-container { flex-grow: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 15px; }
+        .section-title { font-size: 12px; color: #888; text-transform: uppercase; margin: 5px 0 5px 5px; font-weight: bold; letter-spacing: 1px; border-bottom: 1px dashed #333; padding-bottom: 5px; }
+
+        .session-item { padding: 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: rgba(0,0,0,0.3); transition: 0.2s; }
+        .session-item:hover { border-color: #666; background: var(--panel-light); }
+        .session-item.selected { border-color: var(--purple); background: rgba(179, 136, 255, 0.05); }
+        .item-id { font-weight: bold; font-size: 13px; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: #ccc; }
+        .item-time { font-size: 11px; color: var(--text-dim); }
+
+        /* ====== 右侧：主视窗 ====== */
+        .main-area { flex-grow: 1; display: flex; flex-direction: column; background: var(--bg); position: relative; min-width: 0; }
+        .mobile-header { display: none; padding: 15px; background: var(--panel); border-bottom: 1px solid var(--border); align-items: center; justify-content: space-between; }
+        .menu-btn { background: none; border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 16px; }
+
+        /* 大盘卡片流 */
+        .dashboard-container { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
+        .dashboard-header { font-size: 18px; font-weight: bold; color: var(--accent); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .pulse-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.95); opacity: 0.5; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.95); opacity: 0.5; } }
+        
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 20px; align-items: start; }
+        
+        /* ⚡ 高阶进化卡片 */
+        .live-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; transition: 0.3s; }
+        .live-card.is-expanded { border-color: var(--accent); box-shadow: 0 0 15px rgba(32, 201, 151, 0.1); }
+        .live-card.warning-state { border-color: var(--warn); box-shadow: 0 0 15px rgba(241, 196, 15, 0.2); }
+        .live-card.danger-state { border-color: var(--danger); box-shadow: 0 0 20px rgba(255, 95, 86, 0.3); animation: shake 0.5s infinite; }
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-2px); } 50% { transform: translateX(2px); } 75% { transform: translateX(-2px); } 100% { transform: translateX(0); } }
+        
+        .card-header { padding: 15px; background: rgba(0,0,0,0.4); cursor: pointer; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid transparent; }
+        .live-card.is-expanded .card-header { border-bottom-color: var(--border); }
+        .card-title-row { display: flex; justify-content: space-between; align-items: center; }
+        .card-id { font-weight: bold; font-size: 14px; color: var(--text); word-break: break-all; flex-grow: 1; margin-right: 10px; }
+        
+        /* DNA 与 水位表 */
+        .card-meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+        .dna-badge { font-weight: bold; padding: 2px 6px; border-radius: 4px; border: 1px solid; text-transform: uppercase; }
+        .gauge-box { background: #000; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #333; display: flex; gap: 8px; align-items: center; transition: 0.3s;}
+        
+        .card-body { display: none; height: 350px; overflow-y: auto; padding: 15px; background: #080808; flex-direction: column; gap: 10px; }
+        .live-card.is-expanded .card-body { display: flex; }
+        .card-footer { display: none; padding: 10px 15px; background: var(--panel); border-top: 1px solid var(--border); gap: 10px; }
+        .live-card.is-expanded .card-footer { display: flex; }
+        
+        .c-btn { flex: 1; background: transparent; border: 1px solid; padding: 8px 0; border-radius: 4px; font-size: 12px; color: inherit; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .c-btn-stop { border-color: var(--warn); color: var(--warn); }
+        .c-btn-stop:hover { background: var(--warn); color: #000; }
+        .c-btn-kill { border-color: var(--danger); color: var(--danger); }
+        .c-btn-kill:hover { background: var(--danger); color: #fff; }
+
+        /* 历史归档视图 */
+        .history-view { display: none; flex-direction: column; height: 100%; }
+        .dashboard-bar { padding: 15px 20px; background: var(--panel-light); border-bottom: 1px solid var(--border); display: flex; gap: 15px; align-items: center; }
+        .target-title { font-size: 16px; font-weight: bold; color: var(--text); flex-grow: 1; }
+        .btn-del { border: 1px solid #888; color: #888; background: transparent; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;}
+        .btn-del:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: #fff; }
+        .btn-back { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;}
+        .btn-back:hover { background: var(--accent); color: #000; }
+
+        /* 聊天气泡 */
+        .chat-container { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .msg { padding: 12px; border-radius: 6px; position: relative; background: var(--panel); border: 1px solid var(--border); }
+        .msg-user { border-left: 3px solid var(--accent); }
+        .msg-gemini { border-left: 3px solid var(--purple); }
+        .msg-role { font-weight: bold; margin-bottom: 6px; font-size: 11px; text-transform: uppercase; color: #888; }
+        .msg-content { white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.5; }
+        .msg-time { position: absolute; top: 12px; right: 12px; font-size: 10px; color: #555; }
+        
+        /* 🧠 Gemini 原生纯血心智折叠面板 */
+        .gemini-thoughts-container { margin-top: 10px; background: #131314; border: 1px solid #333639; border-radius: 8px; overflow: hidden; font-size: 12px; }
+        .gemini-thoughts-summary { padding: 10px 14px; color: #c4c7c5; cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; font-weight: 500; outline: none; transition: background 0.2s; list-style: none; }
+        .gemini-thoughts-summary:hover { background: #1a1b1e; color: #fff; }
+        .gemini-thoughts-summary::-webkit-details-marker { display: none; }
+        .gemini-thoughts-summary-label { display: flex; align-items: center; gap: 8px; font-weight: bold; }
+        .gemini-thoughts-summary-label::before { content: '🧠'; font-size: 14px; }
+        .gemini-thoughts-summary-timer { display: flex; align-items: center; gap: 8px; font-family: monospace; }
+        .gemini-thoughts-icon { display: inline-block; font-size: 10px; color: #c4c7c5; transition: transform 0.2s; }
+        .gemini-thoughts-container[open] .gemini-thoughts-icon { transform: rotate(180deg); }
+        .gemini-thoughts-content { padding: 14px; border-top: 1px solid #2a2b2f; background: #0a0a0c; color: #fff; display: flex; flex-direction: column; gap: 15px; position: relative; }
+        .gemini-thought-step { display: flex; gap: 12px; position: relative; }
+        .gemini-thought-step:not(:last-child)::after { content: ''; position: absolute; left: 9px; top: 22px; bottom: -15px; width: 2px; background: #333639; z-index: 1; }
+        .gemini-step-number { width: 20px; height: 20px; background: #1a1b1e; border: 1px solid #444; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 10px; color: #c4c7c5; font-weight: bold; flex-shrink: 0; position: relative; z-index: 2; }
+        .gemini-step-detail { display: flex; flex-direction: column; gap: 4px; padding-top: 2px; }
+        .gemini-step-title { color: #e3e3e3; font-weight: bold; font-size: 12px; }
+        .gemini-step-timestamp { color: #888; font-size: 11px; font-family: monospace; white-space: pre-wrap; line-height: 1.4; }
+        
+        .empty-state { margin: auto; color: #555; text-align: center; padding: 40px; font-size: 14px; }
+
+        /* ====== 🚀 指令发射井 (Command Silo) ====== */
+        .command-silo { background: var(--panel); border-top: 1px solid var(--border); padding: 15px 20px; display: flex; gap: 15px; flex-shrink: 0; z-index: 50; }
+        .silo-input { flex-grow: 1; background: #000; border: 1px solid var(--border); color: var(--text); padding: 12px; font-family: inherit; font-size: 14px; border-radius: 6px; resize: none; height: 60px; outline: none; transition: 0.3s; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); }
+        .silo-input:focus { border-color: var(--accent); box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 0 10px rgba(32,201,151,0.2); }
+        .silo-btn { width: 140px; background: rgba(32, 201, 151, 0.1); border: 1px solid var(--accent); color: var(--accent); font-weight: bold; font-family: inherit; font-size: 14px; border-radius: 6px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; }
+        .silo-btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 15px rgba(32,201,151,0.4); }
+        .silo-btn:active { transform: scale(0.95); }
+
+        /* 🗜️ 双兼容协议切换开关样式 */
+        .protocol-switch {
+            display: inline-flex; align-items: center; gap: 8px; 
+            background: rgba(32,201,151,0.1); border: 1px solid var(--accent); 
+            padding: 4px 12px; border-radius: 20px; cursor: pointer; transition: all 0.3s ease;
+            color: var(--accent);
+        }
+        .protocol-switch.natural {
+            background: rgba(52,152,219,0.1); border-color: var(--blue); color: var(--blue);
+        }
+        .protocol-switch span { font-size: 11px; font-weight: bold; letter-spacing: 0.5px; }
+        .protocol-switch input { cursor: pointer; transform: scale(1.1); margin: 0; accent-color: var(--accent); }
+        .protocol-switch:active { transform: scale(0.95); }
+
+        /* ====== 底部：全域雷达 SSE 终端 ====== */
+        .terminal-pane { height: 220px; min-height: 220px; background: #000; border-top: 2px solid var(--accent); display: flex; flex-direction: column; font-family: 'Courier New', monospace; z-index: 200; }
+        .term-header { background: #111; padding: 8px 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; font-size: 12px; color: var(--accent); font-weight: bold; }
+        .term-btn { background: none; border: 1px solid #555; color: #888; border-radius: 3px; font-size: 11px; cursor: pointer; padding: 2px 8px;}
+        .term-btn:hover { color: #fff; border-color: #fff; }
+        .term-logs { flex-grow: 1; overflow-y: auto; padding: 10px 15px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+        .log-row { display: flex; gap: 10px; border-bottom: 1px dashed #222; padding-bottom: 3px; line-height: 1.4;}
+        .log-time { color: #666; white-space: nowrap; }
+        .log-lvl { font-weight: bold; white-space: nowrap; width: 60px; }
+        .log-lvl.INFO { color: var(--text); }
+        .log-lvl.WARNING { color: var(--warn); }
+        .log-lvl.ERROR { color: var(--danger); }
+        .log-lvl.SUCCESS { color: var(--accent); }
+        .log-msg { color: #ccc; word-break: break-all; }
+        
+        .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 90; }
+
+        /* ====== ⚙️ DNA 法则配置面板 ====== */
+        .dna-panel { 
+            position: fixed; right: -400px; top: 0; bottom: 0; width: 380px; 
+            background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); 
+            border-left: 1px solid var(--accent); z-index: 300; 
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            display: flex; flex-direction: column; box-shadow: -5px 0 30px rgba(0,0,0,0.8);
+        }
+        .dna-panel.open { right: 0; }
+        .dna-header { 
+            padding: 20px; border-bottom: 1px solid var(--border); 
+            display: flex; justify-content: space-between; align-items: center; 
+            font-size: 16px; font-weight: bold; color: var(--accent); 
+        }
+        .dna-body { padding: 20px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 25px; }
+        
+        .dna-group { background: var(--panel); border: 1px solid var(--border); padding: 15px; border-radius: 6px; }
+        .dna-world-select { 
+            width: 100%; background: #000; color: var(--text); border: 1px solid var(--border); 
+            padding: 10px; font-family: inherit; font-size: 14px; margin-bottom: 15px; outline: none;
+        }
+        .dna-world-select:focus { border-color: var(--accent); }
+        
+        .dna-control { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+        .dna-control:last-child { margin-bottom: 0; }
+        .dna-label { font-size: 13px; font-weight: bold; display: flex; justify-content: space-between;}
+        .dna-desc { font-size: 11px; color: #666; line-height: 1.4; }
+        .dna-slider-row { display: flex; align-items: center; gap: 15px; }
+        .dna-slider { flex-grow: 1; accent-color: var(--accent); cursor: pointer; }
+        .dna-input { 
+            width: 60px; background: #000; border: 1px solid var(--border); 
+            color: var(--text); text-align: center; padding: 4px; font-family: inherit; font-weight: bold;
+        }
+        
+        .dna-footer { padding: 20px; border-top: 1px solid var(--border); background: #050505; }
+        .btn-apply { 
+            width: 100%; background: rgba(32, 201, 151, 0.1); border: 1px solid var(--accent); 
+            color: var(--accent); padding: 12px; border-radius: 4px; cursor: pointer; 
+            font-weight: bold; font-family: inherit; font-size: 14px; transition: 0.2s;
+        }
+        .btn-apply:hover { background: var(--accent); color: #000; box-shadow: 0 0 15px rgba(32,201,151,0.4); }
+
+        /* 🩻 尸检车间面板 */
+        .autopsy-modal { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:700px; max-width:95vw; background:#111; border:1px solid var(--purple); border-radius:8px; z-index:400; padding:20px; box-shadow:0 0 30px rgba(179,136,255,0.2); max-height:80vh; overflow-y:auto; }
+        .autopsy-item { background:#000; border:1px solid #333; padding:15px; margin-bottom:15px; border-radius:6px; }
+        .autopsy-btn { background:transparent; border:1px solid var(--accent); color:var(--accent); padding:6px 12px; cursor:pointer; font-weight:bold; border-radius:4px; }
+        .autopsy-btn:hover { background:var(--accent); color:#000; }
+
+        @media (max-width: 850px) {
+            .mobile-header { display: flex; }
+            .sidebar { position: fixed; top: 0; bottom: 0; left: 0; transform: translateX(-100%); width: 300px; }
+            .sidebar.open { transform: translateX(0); }
+            .overlay.open { display: block; }
+            .terminal-pane { height: 180px; }
+            .dna-panel { width: 100%; right: -100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="overlay" id="overlay" onclick="closeAllPanels()"></div>
+
+    <div class="top-matrix">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header" onclick="showDashboard()">
+                <div>
+                    <div class="sidebar-title">👁️ 星门矩阵</div>
+                    <div class="sidebar-subtitle">节点雷达: <span id="radar-status" style="color:var(--accent)">扫描中...</span></div>
+                </div>
+                <button class="menu-btn" style="border:none; background:rgba(32, 201, 151, 0.1); color:var(--accent); font-size:12px; padding:6px 10px;" onclick="toggleDnaPanel(event)" title="重构世界线法则">⚙️ 法则配置</button>
+                <button class="menu-btn" style="display:none;" id="close-menu-btn" onclick="toggleSidebar(event)">✕</button>
+            </div>
+            <div class="list-container">
+                <div class="section-title">🗄️ 历史静默档案</div>
+                <div id="history-sessions-list"></div>
+            </div>
+        </div>
+
+        <div class="main-area">
+            <div class="mobile-header">
+                <button class="menu-btn" onclick="toggleSidebar()">☰ 矩阵菜单</button>
+                <span style="font-weight:bold; color:var(--accent)">全息观测箱</span>
+                <button class="menu-btn" onclick="toggleDnaPanel(event)">⚙️</button>
+            </div>
+
+            <div id="dashboard-view" class="dashboard-container">
+                <div class="dashboard-header">
+                    <div class="pulse-dot"></div>
+                    全域守护节点 
+                    <span id="active-count" style="color:#666; font-size:14px; font-weight:normal; margin-left:10px;">(0)</span>
+                    
+                    <button class="menu-btn" style="margin-left:auto; border-color:var(--warn); color:var(--warn);" onclick="fireWeapon(event, '/stop', 'ALL')" title="一键安全挂起所有节点">🛡️ 一级保护: 熔断全域并发</button>
+                    <button class="menu-btn" style="border-color:var(--danger); color:var(--danger); margin-left:10px;" onclick="fireWeapon(event, '/reboot_sandbox', 'ALL')" title="物理重启底层沙盒容器">🔄 二级保护: 重置底层机床</button>
+                    
+                    <button class="menu-btn" style="margin-left:20px; border-color:var(--purple); color:var(--purple);" onclick="openAutopsyConfig()">🔧 故障检修配置: <span id="autopsy-status">OFF</span></button>
+                    <button class="menu-btn" style="border-color:var(--accent); color:var(--accent); margin-left:10px;" onclick="openAutopsyReports()">🔬 审批免疫协议</button>
+                </div>
+                <div id="active-cards-grid" class="cards-grid"></div>
+            </div>
+
+            <div id="history-view" class="history-view">
+                <div class="dashboard-bar">
+                    <button class="btn-back" onclick="showDashboard()">🔙 返回全域大盘</button>
+                    <div class="target-title" id="history-target-title">--</div>
+                    <div id="history-weapon-rack"></div>
+                </div>
+                <div class="chat-container" id="history-chat-container"></div>
+            </div>
+            
+            <div class="command-silo" id="command-silo" style="flex-direction: column; gap: 8px;">
+                <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                    <span style="font-size: 12px; color: var(--text-dim); font-weight: bold; letter-spacing: 1px;">⚡ 战术输入台 (TACTICAL CONSOLE)</span>
+                    <label class="protocol-switch" id="protocolSwitchLabel" title="切换 AI 的通讯逻辑底层" style="margin-left: 0;">
+                        <input type="checkbox" id="enigmaToggle" checked onchange="toggleProtocolUI()">
+                        <span id="protocolText">🗜️ Enigma 压缩协议 (高密度)</span>
+                    </label>
+                </div>
+                <div style="display: flex; gap: 15px; align-items: stretch;">
+                    <textarea class="silo-input" id="silo-input" placeholder="// 接入物理机床，输入提示词指令。 按 [Ctrl+Enter] 直接发射..."></textarea>
+                    <button class="silo-btn" onclick="dispatchCommand()">
+                        <span style="font-size: 18px; line-height: 1;">🚀</span>
+                        <span>发射指令</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="terminal-pane">
+        <div class="term-header">
+            <span>📡 SSE 底层雷达事件总线 (Terminal)</span>
+            <button class="term-btn" onclick="document.getElementById('term-logs').innerHTML=''">清屏</button>
+        </div>
+        <div class="term-logs" id="term-logs">
+            <div style="color:#555; text-align:center; margin-top:20px;">等待底层流线接入...</div>
+        </div>
+    </div>
+
+    <div class="dna-panel" id="dna-panel">
+        <div class="dna-header">
+            <span>🧬 世界线法则重构器</span>
+            <button class="menu-btn" onclick="toggleDnaPanel()" style="border:none;">✕</button>
+        </div>
+        <div class="dna-body">
+            <select class="dna-world-select" id="world-select" onchange="loadWorldPresets()">
+                <option value="stargate_os">🌌 STARGATE_OS (星门严控高危域)</option>
+                <option value="dark_factory">🏭 DARK_FACTORY (黑灯无限制域)</option>
+            </select>
+
+            <div class="dna-group" style="border-color: var(--blue); margin-bottom: 25px;">
+                <div class="dna-control">
+                    <div class="dna-label" style="color: var(--blue)">
+                        <span>🛡️ 全域安保级别 (DEFCON)</span>
+                    </div>
+                    <div class="dna-desc">动态调整全域雷达嗅探频率，高危扫描将压榨更多主控算力。</div>
+                    <select class="dna-world-select" id="security-level-select" style="margin-top:10px; margin-bottom:0;">
+                        <option value="low">🟢 低危 (120秒/次) - 节能巡航</option>
+                        <option value="medium">🟡 中危 (60秒/次) - 标准战备</option>
+                        <option value="high">🔴 高危 (30秒/次) - 极限猎杀</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="dna-group" style="border-color: var(--accent);">
+                <div class="dna-control">
+                    <div class="dna-label" style="color: var(--accent)">
+                        <span>🧠 合理思考轮次 (Max Nodes)</span>
+                    </div>
+                    <div class="dna-desc">配置该环境下的标准推演上限，给予异体相对自由的算力空间。</div>
+                    <div class="dna-slider-row">
+                        <input type="range" class="dna-slider" id="sl-max" min="1" max="100" oninput="syncVal('max')">
+                        <input type="number" class="dna-input" id="inp-max" onchange="syncSlider('max')">
+                    </div>
+                </div>
+            </div>
+
+            <div class="dna-group" style="border-color: var(--warn);">
+                <div class="dna-control">
+                    <div class="dna-label" style="color: var(--warn)">
+                        <span>🛑 强制点刹轮次 (Force Stop)</span>
+                    </div>
+                    <div class="dna-desc">越界红线。触发后立即柔性阻断进程，停止一切计算。</div>
+                    <div class="dna-slider-row">
+                        <input type="range" class="dna-slider" id="sl-stop" min="1" max="120" oninput="syncVal('stop')">
+                        <input type="number" class="dna-input" id="inp-stop" onchange="syncSlider('stop')">
+                    </div>
+                </div>
+            </div>
+
+            <div class="dna-group" style="border-color: var(--danger); background: rgba(255,95,86,0.05);">
+                <div class="dna-control">
+                    <div class="dna-label" style="color: var(--danger)">
+                        <span>🔥 强制回收红线 (Purge Limit)</span>
+                    </div>
+                    <div class="dna-desc">底层阻断红线。触碰即视为算力异常，系统将直接重置进程并释放所有关联内存切片。</div>
+                    <div class="dna-slider-row">
+                        <input type="range" class="dna-slider" id="sl-purge" min="1" max="150" oninput="syncVal('purge')">
+                        <input type="number" class="dna-input" id="inp-purge" onchange="syncSlider('purge')">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="dna-footer">
+            <button class="btn-apply" onclick="saveDnaRules()">💾 封装 DNA 变量并下发</button>
+        </div>
+    </div>
+
+    <div class="autopsy-modal" id="autopsy-config-modal">
+        <h3 style="color:var(--purple); margin-top:0;">🔧 故障检修与免疫提炼引擎 (Diagnostic Forge)</h3>
+        <p style="color:#888; font-size:12px;">开启后，资源被回收的节点将进入诊断舱，由指定的诊断模型分析故障并提炼系统免疫法则。</p>
+        <div style="margin:20px 0;">
+            <label style="display:block; margin-bottom:8px;">检修核心 (诊断模型):</label>
+            <select id="autopsy-model-select" style="width:100%; padding:10px; background:#000; color:#fff; border:1px solid #333;"></select>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button class="autopsy-btn" onclick="toggleAutopsy(true)">🟢 启动引擎</button>
+            <button class="autopsy-btn" style="border-color:var(--warn); color:var(--warn);" onclick="toggleAutopsy(false)">⏸️ 待机引擎</button>
+            <button class="autopsy-btn" style="border-color:#666; color:#aaa;" onclick="document.getElementById('autopsy-config-modal').style.display='none'">关闭</button>
+        </div>
+    </div>
+
+    <div class="autopsy-modal" id="autopsy-reports-modal" style="width: 900px; max-width: 98vw; padding: 25px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:15px; margin-bottom:15px;">
+            <h3 style="color:var(--accent); margin:0; display:flex; align-items:center; gap:8px;">🔬 故障溯源与免疫协议库</h3>
+            <div>
+                <button class="autopsy-btn" id="tab-pending" style="background:var(--accent); color:#000;" onclick="switchAutopsyTab(false)">待审批检修报告</button>
+                <button class="autopsy-btn" id="tab-approved" style="border-color:#555; color:#888;" onclick="switchAutopsyTab(true)">已部署免疫协议</button>
+            </div>
+        </div>
+        <div id="autopsy-reports-container" style="display:flex; flex-direction:column; gap:15px; max-height:65vh; overflow-y:auto; padding-right:10px;"></div>
+        <button class="autopsy-btn" style="margin-top:20px; width:100%; border-color:#555; color:#aaa;" onclick="document.getElementById('autopsy-reports-modal').style.display='none'">关闭诊断档案室</button>
+    </div>
+
+    <div class="autopsy-modal" id="analyzer-modal" style="width:900px; max-width:98vw; border-color:var(--accent);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">
+            <h3 style="color:var(--accent); margin:0;">🔬 降维解析台 (Raw JSON Data)</h3>
+            <span id="analyzer-target-id" style="color:#888; font-family:monospace; font-size:12px;">--</span>
+        </div>
+        <p style="color:#666; font-size:12px; margin-top:0;">您正在查看底层二进制物理切片。所有 SOJ 协议、算力分配和被拦截的原始推演均在此暴露无遗。</p>
+        
+        <div style="background:#050505; border:1px solid #222; border-radius:6px; padding:15px; max-height:500px; overflow-y:auto; position:relative;">
+            <button onclick="copyAnalyzerData()" style="position:absolute; top:10px; right:10px; background:#111; border:1px solid #444; color:#aaa; cursor:pointer; border-radius:4px; padding:4px 8px; font-size:11px;">📋 复制全量数据</button>
+            <pre id="analyzer-raw-json" style="margin:0; font-family:'Courier New', monospace; font-size:12px; color:#a8c7fa; white-space:pre-wrap; word-break:break-all;"></pre>
+        </div>
+        
+        <div style="display:flex; justify-content:flex-end; margin-top:15px;">
+            <button class="autopsy-btn" style="border-color:#666; color:#aaa;" onclick="document.getElementById('analyzer-modal').style.display='none'">关闭解析台</button>
+        </div>
+    </div>
+
+<script>
+        // 💡 动态路由解析：无论是在本地 192，还是线上域名，自动吸附当前 Host！
+        const BASE_URL = `http://${window.location.hostname}:8999`;
+        let isSidebarOpen = false;
+        
+        // 🔗 全链路追踪：极简指纹烙印
+        let clientId = localStorage.getItem('stargate_client_id');
+        if(!clientId) localStorage.setItem('stargate_client_id', clientId = 'OP_' + Date.now().toString(36).toUpperCase());
+        
+        // --- 视图与状态流 ---
+        let currentMode = 'dashboard';
+        let expandedCards = new Set(); 
+        let currentHistorySession = null; 
+        let lastHistoryMtime = 0;
+        let fullSyncTimer = null;
+        let cardUpdateThrottle = {};
+
+        function toggleSidebar(e) {
+            if(e) e.stopPropagation();
+            isSidebarOpen = !isSidebarOpen;
+            document.getElementById('sidebar').classList.toggle('open', isSidebarOpen);
+            document.getElementById('overlay').classList.toggle('open', isSidebarOpen);
+            if(window.innerWidth <= 850 && isSidebarOpen) document.getElementById('close-menu-btn').style.display = 'block';
+        }
+
+        function closeAllPanels() {
+            if(isSidebarOpen) toggleSidebar();
+            const dnaPanel = document.getElementById('dna-panel');
+            if(dnaPanel.classList.contains('open')) toggleDnaPanel();
+        }
+
+        function formatTime(unixOrIso) {
+            if(!unixOrIso) return '--';
+            const d = new Date(typeof unixOrIso === 'number' ? unixOrIso * 1000 : unixOrIso);
+            return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}`;
+        }
+        function escapeHTML(str) { return str.replace(/[&<>'"]/g, tag => ({'&': '&amp;','<': '&lt;','>': '&gt;',"'": '&#39;','"': '&quot;'}[tag] || tag)); }
+
+        // ================= 🧬 DNA 法则配置逻辑 =================
+        const defaultPresets = {
+            "stargate_os": { max: 3, stop: 5, purge: 10, security: "high" },
+            "dark_factory": { max: 50, stop: 99, purge: 100, security: "medium" }
+        };
+
+        let customRules = JSON.parse(localStorage.getItem('stargate_dna_rules')) || JSON.parse(JSON.stringify(defaultPresets));
+
+        function toggleDnaPanel(e) {
+            if(e) e.stopPropagation();
+            const panel = document.getElementById('dna-panel');
+            const isOpening = !panel.classList.contains('open');
+            panel.classList.toggle('open');
+            
+            if (isOpening) {
+                if(isSidebarOpen) toggleSidebar();
+                document.getElementById('overlay').classList.add('open');
+                loadWorldPresets(); 
+            } else {
+                document.getElementById('overlay').classList.remove('open');
+            }
+        }
+
+        function loadWorldPresets() {
+            const world = document.getElementById('world-select').value;
+            const rules = customRules[world] || defaultPresets[world.includes('stargate') ? 'stargate_os' : 'dark_factory'];
+            
+            document.getElementById('security-level-select').value = rules.security || "medium";
+            document.getElementById('sl-max').value = rules.max; document.getElementById('inp-max').value = rules.max;
+            document.getElementById('sl-stop').value = rules.stop; document.getElementById('inp-stop').value = rules.stop;
+            document.getElementById('sl-purge').value = rules.purge; document.getElementById('inp-purge').value = rules.purge;
+        }
+
+        function syncVal(type) { document.getElementById(`inp-${type}`).value = document.getElementById(`sl-${type}`).value; }
+        function syncSlider(type) { document.getElementById(`sl-${type}`).value = document.getElementById(`inp-${type}`).value; }
+
+        function saveDnaRules() {
+            const world = document.getElementById('world-select').value;
+            const security = document.getElementById('security-level-select').value;
+            const max = parseInt(document.getElementById('inp-max').value);
+            const stop = parseInt(document.getElementById('inp-stop').value);
+            const purge = parseInt(document.getElementById('inp-purge').value);
+
+            if (max >= stop || stop >= purge) {
+                alert("⚠️ 厂长，法则冲突！必须满足：思考上限 < 强制点刹 < 物理斩杀！");
+                return;
+            }
+
+            // 💡 保证全局配置不仅注入到对应世界，还在根节点暴露给后端的 _session_watchdog 读取
+            customRules[world] = { max, stop, purge, security };
+            customRules.global_security_level = security; 
+            localStorage.setItem('stargate_dna_rules', JSON.stringify(customRules));
+            
+            // 💡 架构师级跨域恢复：刺穿 8999 端口烧录
+            fetch(`${BASE_URL}/api/config/dna`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(customRules)
+            }).catch(e => console.warn("同步机床法则失败", e));
+            
+            const term = document.getElementById('term-logs');
+            const msg = `<div class="log-row"><div class="log-time">[${formatTime(new Date())}]</div><div class="log-lvl SUCCESS" style="color:var(--accent)">SYSTEM</div><div class="log-msg">🧬 已物理烧录: 安保=${security.toUpperCase()}, Max=${max}, Stop=${stop}, Purge=${purge}。雷达防线已瞬间重铸！</div></div>`;
+            term.insertAdjacentHTML('beforeend', msg);
+            term.scrollTop = term.scrollHeight;
+
+            toggleDnaPanel();
+        }
+
+        // ================= 🚀 指令发射井 (Command Silo) =================
+        function toggleProtocolUI() {
+            const isEnigma = document.getElementById('enigmaToggle').checked;
+            const label = document.getElementById('protocolSwitchLabel');
+            const text = document.getElementById('protocolText');
+            
+            if (isEnigma) {
+                label.className = 'protocol-switch';
+                text.innerText = '🗜️ Enigma 压缩协议 (高密度)';
+            } else {
+                label.className = 'protocol-switch natural';
+                text.innerText = '🌐 自然语言模式 (高消耗)';
+            }
+        }
+
+        async function dispatchCommand() {
+            const inputEl = document.getElementById('silo-input');
+            const prompt = inputEl.value.trim();
+            if (!prompt) return;
+
+            // 1. 抓取当前选择的世界线与对应的 DNA 法则
+            const world = document.getElementById('world-select').value;
+            const dnaRules = customRules[world] || defaultPresets[world];
+
+            // 2. 终极 Payload (内联注入链路追踪指纹，加入协议开关)
+            const payload = { 
+                prompt, world, dna_rules: dnaRules, client_id: clientId, 
+                workflow_id: 'WF_' + Date.now().toString(36).toUpperCase(),
+                enigma_mode: document.getElementById('enigmaToggle').checked
+            };
+
+            // 3. UI 反馈
+            inputEl.value = '';
+            inputEl.placeholder = "🚀 指令已发射，机床轰鸣中...";
+            
+            try {
+                const res = await fetch(`${BASE_URL}/api/dispatch`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                
+                // 成功后，1号的底层锁会自动落盘，SSE 雷达会瞬间捕获并通知前端刷新卡片！
+                setTimeout(() => { inputEl.placeholder = "// 接入物理机床，输入提示词指令。 按 [Ctrl+Enter] 直接发射..."; }, 3000);
+            } catch (e) {
+                alert("❌ 发射失败，管道可能堵塞: " + e.message);
+                inputEl.placeholder = "// 接入物理机床，输入提示词指令。 按 [Ctrl+Enter] 直接发射...";
+            }
+        }
+
+        // 快捷键支持
+        document.getElementById('silo-input').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                dispatchCommand();
+            }
+        });
+
+        // ================= 📡 SSE 雷达底层事件总线 =================
+        const termLogs = document.getElementById('term-logs');
+        const eventSource = new EventSource(`${BASE_URL}/stream`);
+        
+        eventSource.onopen = () => {
+            const div = document.createElement('div');
+            div.innerHTML = `<span style="color:var(--accent)">[系统] 物理层 SSE 管道已接通，监听机床轰鸣...</span>`;
+            termLogs.appendChild(div);
+            fetchSessions();
+        };
+        
+        eventSource.onmessage = (e) => {
+            if(e.data && e.data !== ': heartbeat') {
+                try {
+                    const d = JSON.parse(e.data);
+                    
+                    // 渲染终端日志
+                    const r = document.createElement('div');
+                    r.className = 'log-row';
+                    let msgHtml = escapeHTML(d.msg)
+                        .replace(/❌|🔥|🛑|🚨/g, '<span style="color:var(--danger)">$&</span>')
+                        .replace(/🧠|🖼️/g, '<span style="color:var(--purple)">$&</span>')
+                        .replace(/✅/g, '<span style="color:var(--accent)">$&</span>')
+                        .replace(/⚠️|♻️/g, '<span style="color:var(--warn)">$&</span>');
+                    
+                    r.innerHTML = `<div class="log-time">[${d.time}]</div><div class="log-lvl ${d.level}">${d.level}</div><div class="log-msg">${msgHtml}</div>`;
+                    termLogs.appendChild(r);
+                    termLogs.scrollTop = termLogs.scrollHeight;
+
+                    // ⚡ SSE 联动 UI (被动驱动引擎)
+                    const msg = d.msg || "";
+                    if (msg.includes('🚀 [任务') || msg.includes('✅ [任务') || msg.includes('❌ [任务') || msg.includes('🔥 [净世协议]')) {
+                        clearTimeout(fullSyncTimer);
+                        fullSyncTimer = setTimeout(() => {
+                            fetchSessions();
+                            if(currentMode === 'history') fetchHistoryData();
+                        }, 800);
+                    }
+
+                    let taskMatch = msg.match(/任务 ([\w\.-]+)/);
+                    if (taskMatch) {
+                        let tid = taskMatch[1];
+                        if (expandedCards.has(tid)) {
+                            let now = Date.now();
+                            if (!cardUpdateThrottle[tid] || now - cardUpdateThrottle[tid] > 1200) {
+                                cardUpdateThrottle[tid] = now;
+                                const cardPath = document.getElementById(`card-${tid}`)?.getAttribute('data-path');
+                                if(cardPath) fetchSingleCardData(tid, cardPath);
+                            }
+                        }
+                    }
+                } catch(err) {}
+            }
+        };
+        
+        eventSource.onerror = () => {
+            document.getElementById('radar-status').innerText = '断开重连中';
+            document.getElementById('radar-status').style.color = 'var(--danger)';
+        };
+
+        // ================= 👁️ 全域活跃与静默档案扫描 =================
+        async function fetchSessions() {
+            try {
+                const res = await fetch(`${BASE_URL}/api/sessions/list`);
+                if(!res.ok) throw new Error();
+                const data = await res.json();
+                
+                document.getElementById('radar-status').innerText = '在线同步';
+                document.getElementById('radar-status').style.color = 'var(--accent)';
+
+                renderHistorySidebar(data.history || []);
+                if(currentMode === 'dashboard') renderActiveCards(data.active || []);
+            } catch(e) {
+                document.getElementById('radar-status').innerText = '扫描异常';
+                document.getElementById('radar-status').style.color = 'var(--danger)';
+            }
+        }
+
+        function renderHistorySidebar(historyData) {
+            const container = document.getElementById('history-sessions-list');
+            if(historyData.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color:#555; font-size:12px; padding:10px;">档案库空空如也</div>`;
+                return;
+            }
+            let html = '';
+            historyData.forEach(s => {
+                const isSelected = (currentHistorySession && currentHistorySession.path === s.path) ? 'selected' : '';
+                html += `
+                <div class="session-item ${isSelected}" onclick="lockHistoryTarget('${s.id}', '${s.path.replace(/\\/g, '\\\\')}')">
+                    <div class="item-id" title="${s.id}">🗂️ ${s.id}</div>
+                    <div class="item-time">封存时间: ${formatTime(s.mtime)}</div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderActiveCards(activeData) {
+            const grid = document.getElementById('active-cards-grid');
+            document.getElementById('active-count').innerText = `(${activeData.length})`;
+            
+            if(activeData.length === 0) {
+                grid.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;">机床全域空闲，雷达静默监听中...</div>`;
+                return;
+            }
+
+            /// 1. 物理清理：移除已经断开链接的残骸
+            const currentIds = activeData.map(a => a.id);
+            Array.from(grid.children).forEach(child => {
+                const cid = child.getAttribute('data-id');
+                if(cid && !currentIds.includes(cid)) { 
+                    // 💡 厂长护眼模式：您正在展开阅读的进程，即使结束也不准强行消失！
+                    if (expandedCards.has(cid)) {
+                        const gauge = child.querySelector('.gauge-box');
+                        if (gauge && !gauge.innerText.includes('归档')) {
+                            gauge.innerText = '📦 已转入历史档案 (阅读后可闭合)';
+                            gauge.style.color = '#888';
+                            gauge.style.borderColor = '#555';
+                            child.style.borderStyle = 'dashed';
+                            child.style.borderColor = '#555';
+                        }
+                    } else {
+                        child.remove(); 
+                        expandedCards.delete(cid); 
+                    }
+                }
+            });
+
+            // 🔗 链路归一化：将属于同一 Workflow 的子节点强行聚拢排序
+            activeData.sort((a, b) => {
+                if (a.workflow_id === b.workflow_id) return b.mtime - a.mtime;
+                return (a.workflow_id || '').localeCompare(b.workflow_id || '');
+            });
+
+            // 2. 精准维护：只更新数值，绝不重绘 DOM！
+            activeData.forEach(s => {
+                let card = document.getElementById(`card-${s.id}`);
+                const isExpanded = expandedCards.has(s.id);
+                
+                if(!card) {
+                    // ✨ 仅在卡片不存在时，进行一次性物理铸造
+                    card = document.createElement('div');
+                    card.id = `card-${s.id}`;
+                    card.setAttribute('data-id', s.id);
+                    card.setAttribute('data-path', s.path);
+                    grid.appendChild(card);
+                    
+                    // 🛡️ 身份校验：识别是我发射的任务还是访客的任务
+                    const isMine = s.client_id === clientId;
+                    const ownershipTag = isMine ? `<span style="color:var(--accent);">👤 MY_TASK</span>` : `<span style="color:#888;">👽 访客 (${(s.client_id||'').substr(0,5)})</span>`;
+                    
+                    // 初始结构铸造 (innerHTML 只在这里运行一次！)
+                    card.innerHTML = `
+                        <div class="card-header" onclick="toggleCardExpand('${s.id}')">
+                            <div class="card-title-row">
+                                <div class="card-id" style="font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${s.title||s.id}">🟢 ${s.title || s.id}</div>
+                                <div class="card-tokens">⚡ <span class="tk-val">0</span> TK</div>
+                            </div>
+                            <div class="card-meta-row" id="meta-${s.id}">
+                                <span style="color:#888; font-family:monospace; background:#000; padding:2px 6px; border-radius:4px; border:1px solid #333;">🔗 ${s.workflow_id ? s.workflow_id.substr(0,10) : 'RAW'}</span>
+                                ${ownershipTag}
+                            </div>
+                            <div class="card-meta-row" style="margin-top:6px;">
+                                <span style="color:#666;">活跃: <span class="mtime-val">--</span></span>
+                                <span class="gauge-box" id="gauge-${s.id}" style="color:#888;">🧠 嗅探中...</span>
+                            </div>
+                        </div>
+                        <div class="card-body" id="body-${s.id}">
+                            <div style="text-align:center; color:#555; font-size:12px; margin:auto;">连入神经数据层...</div>
+                        </div>
+                        <div class="card-footer">
+                            <button class="c-btn" style="border-color:var(--accent); color:var(--accent);" onclick="openAnalyzer(event, '${s.id}', '${s.path.replace(/\\/g, '\\\\')}')">🔬 解析协议</button>
+                            <button class="c-btn c-btn-stop" onclick="fireWeapon(event, '/stop', '${s.id}')" title="触发一级保护：中断当前推演">🛡️ 节点熔断</button>
+                            <button class="c-btn c-btn-kill" onclick="fireWeapon(event, '/kill', '${s.id}')" title="触发资源回收：清理环境并释放算力">♻️ 资源回收</button>
+                        </div>
+                    `;
+                }
+
+                // 🦾 状态平滑同步：直接修改 TextNode，不引发卡片重绘
+                card.className = `live-card ${isExpanded ? 'is-expanded' : ''}`;
+                card.querySelector('.tk-val').innerText = s.tokens || 0;
+                card.querySelector('.mtime-val').innerText = formatTime(s.mtime);
+                
+                // 触发内部日志更新 (这里有内部逻辑判断，不会无谓重绘)
+                fetchSingleCardData(s.id, s.path);
+                
+                // 🔗 动态重排 DOM 节点，使同一流线的特工并排显示！
+                grid.appendChild(card);
+            });
+        }
+
+        function toggleCardExpand(id) {
+            const card = document.getElementById(`card-${id}`);
+            if(!card) return;
+            if(expandedCards.has(id)) {
+                expandedCards.delete(id); card.classList.remove('is-expanded');
+            } else {
+                expandedCards.add(id); card.classList.add('is-expanded');
+                fetchSingleCardData(id, card.getAttribute('data-path'));
+            }
+        }
+
+        async function fetchSingleCardData(id, path) {
+            try {
+                const res = await fetch(`${BASE_URL}/api/sessions/read?path=${encodeURIComponent(path)}`);
+                if(!res.ok) return;
+                const result = await res.json();
+                
+                // 💡 升级：不仅传递 messages，还要把整个 result.data 传给更新器，以便读取封条！
+                updateCardMeta(id, result.data);
+                
+                const messages = result.data.messages || [];
+                if(expandedCards.has(id)) renderChatToContainer(`body-${id}`, messages);
+            } catch(e) {}
+        }
+
+        function updateCardMeta(id, fullSessionData) {
+            const metaContainer = document.getElementById(`meta-${id}`);
+            const cardEle = document.getElementById(`card-${id}`);
+            if(!metaContainer || !cardEle || !fullSessionData) return;
+
+            const messages = fullSessionData.messages || [];
+            if(messages.length === 0) return;
+
+            const firstUserMsg = messages.find(m => m.type === 'user');
+            let worldName = 'UNKNOWN';
+            
+            const fallbackWorld = (firstUserMsg && JSON.stringify(firstUserMsg).includes('DARK_FACTORY')) ? 'dark_factory' : 'stargate_os';
+            let manualStop = (customRules[fallbackWorld] && customRules[fallbackWorld].stop) ? customRules[fallbackWorld].stop : null;
+            
+            // 💡 深度读取：直接从 session_state 读取物理封条
+            const sessionState = fullSessionData.session_state || {};
+            const isStopped = sessionState.is_stopped === true;
+            const isPurged = sessionState.is_purged === true;
+            
+            let aiAllocatedStop = sessionState.ai_dynamic_stop || null; 
+            let forceStopLimit = manualStop || aiAllocatedStop || 15;
+            
+            if (firstUserMsg) {
+                const text = typeof firstUserMsg.content === 'string' ? firstUserMsg.content : (firstUserMsg.content[0]?.text || '');
+                if (text.includes('【MDL_PROTOCOL_ENGAGED】')) {
+                    try {
+                        let cleanText = text;
+                        if (text.includes('⚠️ CRITICAL:')) cleanText = text.split('⚠️ CRITICAL:')[0];
+                        const startIdx = cleanText.indexOf('{');
+                        const endIdx = cleanText.lastIndexOf('}');
+                        if (startIdx !== -1 && endIdx > startIdx) {
+                            const dnaJson = JSON.parse(cleanText.substring(startIdx, endIdx + 1));
+                            if (dnaJson.WORLD_LINE) worldName = dnaJson.WORLD_LINE;
+                            if (dnaJson.COGNITIVE_LIMITS && dnaJson.COGNITIVE_LIMITS.force_stop) {
+                                forceStopLimit = parseInt(dnaJson.COGNITIVE_LIMITS.force_stop);
+                            }
+                        }
+                    } catch(e) {}
+                }
+            }
+
+            let thoughtsCount = 0;
+            messages.forEach(m => {
+                if (m.type !== 'user') { 
+                    if (m.thoughts && m.thoughts.length > 0) thoughtsCount += m.thoughts.length;
+                    else thoughtsCount += 1;
+                }
+            });
+
+            let gaugeColor = '#20c997'; 
+            let gaugeText = `🧠 节点: ${thoughtsCount} / ${forceStopLimit}`;
+            
+            cardEle.classList.remove('warning-state', 'danger-state');
+            
+            // 🛑 核心视觉接管：算力保护机制状态映射
+            if (isPurged) {
+                gaugeColor = '#555';
+                gaugeText = `♻️ 资源已回收断连`;
+                cardEle.classList.add('danger-state');
+                cardEle.style.opacity = '0.6';
+            } else if (isStopped) {
+                gaugeColor = '#888';
+                gaugeText = `🛡️ 算力保护已介入 (${thoughtsCount})`;
+                cardEle.style.borderStyle = 'dashed';
+            } else if (thoughtsCount >= forceStopLimit) {
+                gaugeColor = '#ff5f56'; cardEle.classList.add('danger-state');
+            } else if (thoughtsCount >= forceStopLimit - 2) {
+                gaugeColor = '#f1c40f'; cardEle.classList.add('warning-state');
+            }
+
+            let badgeHtml = '';
+            if (worldName.includes('STARGATE')) badgeHtml = `<span class="dna-badge" style="color:var(--blue); border-color:var(--blue);">🌌 ${worldName}</span>`;
+            else if (worldName.includes('DARK')) badgeHtml = `<span class="dna-badge" style="color:var(--purple); border-color:var(--purple);">🏭 ${worldName}</span>`;
+
+            metaContainer.innerHTML = `
+                ${badgeHtml}
+                <span class="gauge-box" id="gauge-${id}" style="color:${gaugeColor}; border-color:${gaugeColor}; transition:all 0.3s;">${gaugeText}</span>
+            `;
+        }
+        function showDashboard() {
+            currentMode = 'dashboard';
+            document.getElementById('dashboard-view').style.display = 'flex';
+            document.getElementById('history-view').style.display = 'none';
+            currentHistorySession = null;
+            if(window.innerWidth <= 850 && isSidebarOpen) toggleSidebar();
+            fetchSessions();
+        }
+
+        function lockHistoryTarget(id, path) {
+            currentMode = 'history';
+            currentHistorySession = { id, path };
+            lastHistoryMtime = 0;
+            
+            if(window.innerWidth <= 850 && isSidebarOpen) toggleSidebar();
+            
+            document.getElementById('dashboard-view').style.display = 'none';
+            document.getElementById('history-view').style.display = 'flex';
+            document.getElementById('history-target-title').innerText = `[已归档] ${id}`;
+            document.getElementById('history-weapon-rack').innerHTML = `
+                <button class="btn-back" style="border-color:var(--blue); color:var(--blue);" onclick="downloadSourceFile(event, '${id}', '${path.replace(/\\/g, '\\\\')}')">📥 下载源文件</button>
+                <button class="btn-back" style="border-color:var(--accent); color:var(--accent);" onclick="openAnalyzer(event, '${id}', '${path.replace(/\\/g, '\\\\')}')">🔬 降维解析</button>
+                <button class="btn-del" onclick="fireWeapon(event, '/api/sessions/delete', '${path.replace(/\\/g, '\\\\')}', true)">🗑️ 彻底抹除</button>
+            `;
+            document.getElementById('history-chat-container').innerHTML = `<div class="empty-state">解冻数据中...</div>`;
+            fetchHistoryData();
+        }
+
+        async function fetchHistoryData() {
+            if (currentMode !== 'history' || !currentHistorySession) return;
+            try {
+                const res = await fetch(`${BASE_URL}/api/sessions/read?path=${encodeURIComponent(currentHistorySession.path)}`);
+                if(!res.ok) {
+                    if(res.status === 404) document.getElementById('history-chat-container').innerHTML = `<div class="empty-state">切片已销毁</div>`;
+                    return;
+                }
+                const result = await res.json();
+                if(result.mtime !== lastHistoryMtime) {
+                    lastHistoryMtime = result.mtime;
+                    renderChatToContainer('history-chat-container', result.data.messages || []);
+                }
+            } catch(e) { }
+        }
+
+        // ================= 🧬 V21.0 块级无损增量渲染引擎 =================
+        function renderChatToContainer(containerId, messages) {
+            const container = document.getElementById(containerId);
+            if(!container) return;
+            if(messages.length === 0) { container.innerHTML = `<div class="empty-state" style="padding:20px;">未捕获脑电波</div>`; return; }
+            
+            const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 20;
+            const oldScrollTop = container.scrollTop;
+
+            // 清理可能存在的 empty-state
+            const emptyState = container.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
+            
+            // 🛡️ [核心锚定] 块级增量渲染：告别全量覆盖，彻底解决跳动与焦点丢失！
+            messages.forEach((msg, index) => {
+                const role = msg.type === 'user' ? '👨‍💻 厂长指令' : '🤖 算力异体';
+                const cssClass = msg.type === 'user' ? 'msg-user' : 'msg-gemini';
+                let rawText = typeof msg.content === 'string' ? msg.content : (msg.content[0]?.text || '');
+                
+                let finalMarkdown = rawText;
+                let machineSignals = [];
+
+                if (msg.type === 'gemini') {
+                    try {
+                        const startIdx = rawText.indexOf('{');
+                        const endIdx = rawText.lastIndexOf('}');
+                        if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+                            const jsonStr = rawText.substring(startIdx, endIdx + 1);
+                            const dnaPayload = JSON.parse(jsonStr);
+                            if (dnaPayload.safe_markdown) finalMarkdown = dnaPayload.safe_markdown;
+                            if (dnaPayload.machine_signals && Array.isArray(dnaPayload.machine_signals)) {
+                                machineSignals = dnaPayload.machine_signals;
+                            }
+                        }
+                    } catch(e) {}
+                } else if (msg.type === 'user') {
+                    if (finalMarkdown.includes('【MDL_PROTOCOL_ENGAGED】')) {
+                        const marker = '}。\n';
+                        const cutIdx = finalMarkdown.lastIndexOf(marker);
+                        if(cutIdx !== -1) {
+                            finalMarkdown = '[🧬 MDL 机器指令协议已隐式下发]\n' + finalMarkdown.substring(cutIdx + marker.length);
+                        } else {
+                            finalMarkdown = '[🧬 MDL 机器指令协议已隐式下发]\n\n' + finalMarkdown.split('\n').slice(-3).join('\n');
+                        }
+                    }
+                }
+
+                // 组装单个气泡的内部 DOM
+                let innerHtml = `<div class="msg-time">${formatTime(msg.timestamp)}</div><div class="msg-role">${role}</div>`;
+
+                if (machineSignals.length > 0) {
+                    const codebook = {
+                        'S_OK': (data) => `✅ 物理落盘成功: <span style="color:#20c997;font-family:monospace;">${data}</span>`,
+                        'S_ERR': (data) => `❌ 致命异常: <span style="color:#ff5f56;">${data}</span>`,
+                        'OS_CMD': (data) => `🦾 召唤机械臂: <span style="color:#b388ff;font-family:monospace;">${data}</span>`,
+                        'REQ_NET': (data) => `🌐 跨域请求: <span style="color:#3498db;text-decoration:underline;">${data}</span>`,
+                        'THT': (data) => `🧠 神经元短接: [ ${data.split(',').join(' -> ')} ]`,
+                        'T_END': () => `🏁 纪元任务终结`
+                    };
+
+                    innerHtml += `<div style="margin-bottom:10px; display:flex; flex-direction:column; gap:6px;">`;
+                    machineSignals.forEach(sig => {
+                        const parts = sig.split('|');
+                        const opCode = parts[0];
+                        const payload = parts.slice(1).join('|');
+                        
+                        let decodedHtml = codebook[opCode] 
+                            ? codebook[opCode](payload) 
+                            : `⚡ 未知协议串: ${escapeHTML(sig)}`;
+
+                        innerHtml += `<div style="background:rgba(32,201,151,0.05); border-left:3px solid var(--accent); color:#ccc; padding:6px 10px; border-radius:4px; font-size:12px; font-weight:bold; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+                            ${decodedHtml}
+                        </div>`;
+                    });
+                    innerHtml += `</div>`;
+                }
+
+                innerHtml += `<div class="msg-content">${escapeHTML(finalMarkdown)}</div>`;
+
+                if (msg.thoughts && msg.thoughts.length > 0) {
+                    innerHtml += `<details class="gemini-thoughts-container">
+                        <summary class="gemini-thoughts-summary">
+                            <div class="gemini-thoughts-summary-label"><span>Thinking</span></div>
+                            <div class="gemini-thoughts-summary-timer">
+                                <span>${msg.thoughts.length} steps</span>
+                                <span class="gemini-thoughts-icon">▼</span>
+                            </div>
+                        </summary>
+                        <div class="gemini-thoughts-content">`;
+                    msg.thoughts.forEach((t, i) => {
+                        innerHtml += `
+                            <div class="gemini-thought-step">
+                                <div class="gemini-step-number">${i + 1}</div>
+                                <div class="gemini-step-detail">
+                                    <div class="gemini-step-title">${escapeHTML(t.subject || 'System Thought')}</div>
+                                    <div class="gemini-step-timestamp">${escapeHTML(t.description.trim())}</div>
+                                </div>
+                            </div>`;
+                    });
+                    innerHtml += `</div></details>`;
+                }
+
+                // 💡 精准物理对比：提取内容签名，有变化才更新当前 DOM 块
+                const rawSign = rawText + machineSignals.join('') + (msg.thoughts ? msg.thoughts.length : 0);
+                let childNode = container.children[index];
+                
+                if (!childNode) {
+                    childNode = document.createElement('div');
+                    childNode.className = `msg ${cssClass}`;
+                    childNode.setAttribute('data-sign', rawSign);
+                    childNode.innerHTML = innerHtml;
+                    container.appendChild(childNode);
+                } else if (childNode.getAttribute('data-sign') !== rawSign) {
+                    childNode.className = `msg ${cssClass}`;
+                    childNode.setAttribute('data-sign', rawSign);
+                    childNode.innerHTML = innerHtml;
+                }
+            });
+
+            // 剔除可能多余的残余旧块
+            while (container.children.length > messages.length) {
+                container.removeChild(container.lastChild);
+            }
+            
+            // ⚖️ 稳住厂长视界
+            if (isScrolledToBottom) {
+                container.scrollTop = container.scrollHeight;
+            } else {
+                container.scrollTop = oldScrollTop;
+            }
+        } // 🛡️ 架构师修复：必须在此处闭合 renderChatToContainer 的右大括号！
+
+        // ==========================================
+        // 🛡️ V51.0 全域算力保护与机床调度中枢
+        // ==========================================
+        async function fireWeapon(event, endpoint, targetParam, isPath = false) {
+            if(event) {
+                event.stopPropagation();
+                // 1. 防手抖物理锁
+                const btn = event.currentTarget;
+                if (btn && btn.disabled) return;
+                if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+            }
+            
+            let actionName = '🗑️ 档案销毁';
+            let alertMsg = `确定要销毁该节点档案吗？`;
+            
+            // 💡 厂长护航哲学：温和但极其坚决的系统级提示词
+            if (endpoint === '/stop') {
+                actionName = '🛡️ 一级保护 (节点熔断)';
+                alertMsg = targetParam === 'ALL' 
+                    ? `⚠️ 算力保护确认：\n\n即将对【全域所有活跃节点】实施一级保护！\n这将在不重启容器的情况下强行中止当前推演，释放系统算力。\n确定执行？`
+                    : `⚠️ 算力保护确认：\n\n即将对节点 [ ${targetParam} ] 实施一级保护（熔断推演）！\n确定执行？`;
+            } else if (endpoint === '/kill') {
+                actionName = '♻️ 资源回收 (环境清理)';
+                alertMsg = `⚠️ 资源回收确认：\n\n即将清理节点 [ ${targetParam} ] 的运行环境并完全释放其占用的算力资源！\n确定执行？`;
+            } else if (endpoint === '/reboot_sandbox') {
+                actionName = '🔄 二级保护 (底层重置)';
+                alertMsg = `🚨 最高级别保护确认：\n\n即将对底层沙盒容器实施【二级保护 (物理重启)】！\n当前所有正在运行的节点将被瞬间清空，机床环境恢复至最纯净的初始态！\n确定执行？`;
+            }
+
+            if(!confirm(alertMsg)) {
+                if (event && event.currentTarget) { event.currentTarget.disabled = false; event.currentTarget.style.opacity = '1'; }
+                return;
+            }
+
+            const url = isPath ? `${BASE_URL}${endpoint}?path=${encodeURIComponent(targetParam)}` : `${BASE_URL}${endpoint}?task=${encodeURIComponent(targetParam)}`;
+            try {
+                // 2. 调度执行
+                const res = await fetch(url);
+                if(!res.ok) throw new Error(`HTTP Error ${res.status}`);
+                
+                // 3. 视觉反馈：在终端打印系统级护航日志
+                const term = document.getElementById('term-logs');
+                if (term) {
+                    const msg = `<div class="log-row"><div class="log-time">[${formatTime(new Date())}]</div><div class="log-lvl SUCCESS" style="color:var(--accent)">SHIELD</div><div class="log-msg">🛡️ 指挥官已触发 [${actionName}]，目标 ${targetParam} 已被系统安全接管！</div></div>`;
+                    term.insertAdjacentHTML('beforeend', msg);
+                    term.scrollTop = term.scrollHeight;
+                }
+                
+                if(endpoint === '/api/sessions/delete' && currentMode === 'history') showDashboard();
+                if(endpoint === '/kill') expandedCards.delete(targetParam);
+                
+                // 💡 如果是沙盒重启，清空所有展开卡片，并稍微延迟后刷新大盘（等待容器重新拉起）
+                if(endpoint === '/reboot_sandbox') {
+                    expandedCards.clear();
+                    setTimeout(() => fetchSessions(), 2000);
+                } else {
+                    fetchSessions();
+                }
+            } catch(e) { 
+                alert("❌ 保护指令发送失败，底层机床可能已断连重启中: " + e.message); 
+            } finally {
+                if (event && event.currentTarget) { event.currentTarget.disabled = false; event.currentTarget.style.opacity = '1'; }
+            }
+        }
+
+        // 启动高频心跳
+        fetchSessions();
+        setInterval(fetchSessions, 2500);
+        setInterval(fetchHistoryData, 3000);
+
+        // ================= 🔧 故障检修与免疫引擎控制 =================
+        async function openAutopsyConfig() {
+            try {
+                // 💡 路由修复：使用相对路径直接刺穿 3333 主控端口！
+                const res = await fetch(`/api/config/ai`);
+                const aiData = await res.json();
+                
+                const vendorList = aiData.vendors || []; 
+                
+                const sel = document.getElementById('autopsy-model-select');
+                if (vendorList.length === 0) {
+                    sel.innerHTML = `<option value="">⚠️ 未检测到已配置的诊断模型</option>`;
+                } else {
+                    sel.innerHTML = vendorList.map(a => `<option value="${a.id}">${a.name} (${a.remark||'通用'})</option>`).join('');
+                }
+                
+                document.getElementById('autopsy-config-modal').style.display = 'block';
+            } catch(e) { 
+                console.error("🔧 检修引擎模型拉取异常:", e);
+                alert("获取诊断模型失败: " + e.message); 
+            }
+        }
+
+        async function toggleAutopsy(enabled) {
+            const modelId = document.getElementById('autopsy-model-select').value;
+            await fetch(`/api/audit/autopsy/toggle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled, model_id: modelId })
+            });
+            document.getElementById('autopsy-status').innerText = enabled ? 'ON' : 'OFF';
+            document.getElementById('autopsy-config-modal').style.display = 'none';
+        }
+
+        // ================= 🔬 诊断档案馆与协议逻辑 =================
+        let allAutopsyReports = [];
+        let showingApproved = false;
+
+        function switchAutopsyTab(showApprv) {
+            showingApproved = showApprv;
+            document.getElementById('tab-pending').style = showApprv ? "border-color:#555; color:#888; background:transparent;" : "background:var(--accent); color:#000; border-color:var(--accent);";
+            document.getElementById('tab-approved').style = showApprv ? "background:var(--accent); color:#000; border-color:var(--accent);" : "border-color:#555; color:#888; background:transparent;";
+            renderAutopsyList();
+        }
+
+        async function openAutopsyReports() {
+            try {
+                const res = await fetch(`/api/audit/autopsy/reports`);
+                const data = await res.json();
+                allAutopsyReports = data.data || [];
+                renderAutopsyList();
+                document.getElementById('autopsy-reports-modal').style.display = 'block';
+            } catch(e) { alert("获取检修报告失败: " + e.message); }
+        }
+
+        function renderAutopsyList() {
+            const container = document.getElementById('autopsy-reports-container');
+            const list = allAutopsyReports.filter(r => r.is_approved === showingApproved);
+            
+            if (list.length === 0) {
+                container.innerHTML = `<div style="color:#666;text-align:center; padding:60px 20px; font-size:14px; border:1px dashed #333; border-radius:8px;">暂无${showingApproved ? '已部署' : '待审批'}的检修报告与免疫协议。</div>`;
+                return;
+            }
+
+            container.innerHTML = list.map(r => `
+                <div class="autopsy-item" style="border-color: ${r.is_approved ? '#444' : 'var(--warn)'}; opacity: ${r.is_approved ? '0.75' : '1'}; transition:0.2s;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px dashed #333; padding-bottom:10px;">
+                        <strong style="color:${r.is_approved ? '#aaa' : 'var(--warn)'}; font-size:15px;">[${r.level}] 异常溯源档案: ${r.task_id}</strong>
+                        <span style="color:#666; font-size:12px;">${(r.timestamp||'').replace('T', ' ').slice(0, 19)}</span>
+                    </div>
+                    
+                    <div style="font-size:14px; color:#ddd; margin-bottom:12px; line-height:1.6;">
+                        <span style="color:var(--warn); font-weight:bold;">⚠️ 节点异常诊断:</span><br>${r.reason}
+                    </div>
+                    
+                    <div style="font-size:13px; color:var(--purple); background:#0a0a0c; padding:12px; border-radius:6px; margin-bottom:15px; border-left:3px solid var(--purple); line-height:1.5;">
+                        <span style="font-weight:bold; color:#b388ff;">🧠 熔断前推演 (AI 本地化解析):</span><br>${r.translated_thoughts}
+                    </div>
+                    
+                    <div style="background:rgba(32,201,151,0.05); border:1px solid rgba(32,201,151,0.2); padding:15px; border-radius:6px; margin-bottom:15px;">
+                        <div style="color:var(--accent); font-size:14px; font-weight:bold; margin-bottom:10px;">🧬 提炼的系统免疫法则 (DNA)</div>
+                        <div style="display:flex; gap:10px; font-size:12px; margin-bottom:10px;">
+                            <span style="background:#000; padding:3px 8px; border-radius:4px; border:1px solid #333; color:#aaa;">世界: <span style="color:#fff;">${r.proposed_dna.world}</span></span>
+                            <span style="background:#000; padding:3px 8px; border-radius:4px; border:1px solid #333; color:#aaa;">类型: <span style="color:#fff;">${r.proposed_dna.dna.type}</span></span>
+                            <span style="background:#000; padding:3px 8px; border-radius:4px; border:1px solid #333; color:#aaa;">归类: <span style="color:#fff;">${r.proposed_dna.category_pinyin}</span></span>
+                        </div>
+                        <div style="font-size:14px; color:#fff; font-weight:bold; margin-bottom:6px;">${r.proposed_dna.dna.name}</div>
+                        <div style="font-size:12px; color:#888; margin-bottom:8px;">摘要: ${r.proposed_dna.dna.desc}</div>
+                        <div style="font-size:13px; color:#ccc; background:#000; padding:12px; border-radius:6px; font-family:monospace; white-space:pre-wrap; border:1px solid #222;">${r.proposed_dna.dna.content}</div>
+                    </div>
+                    
+                    <div style="display:flex; gap:15px; justify-content:flex-end; align-items:center; margin-top:10px;">
+                        ${r.is_approved ? 
+                            `<span style="color:var(--accent); font-weight:bold; font-size:13px; background:rgba(32,201,151,0.1); padding:6px 12px; border-radius:4px;">✅ 免疫协议已部署</span>` : 
+                            `<button class="autopsy-btn" onclick="approveDna('${r.task_id}')">✅ 批准协议并部署至主板</button>`
+                        }
+                        <button class="autopsy-btn" style="border-color:#444; color:#888;" onclick="deleteAutopsyReport('${r.file_name}')" title="清理此份检修档案">🗑️ 清除档案</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function approveDna(taskId) {
+            if(!confirm("🛡️ 确定将此免疫协议部署至全域系统法则库吗？")) return;
+            try {
+                await fetch(`/api/audit/autopsy/approve/${taskId}`, { method: 'POST' });
+                alert("✨ 部署成功！系统免疫力已提升！");
+                openAutopsyReports(); 
+            } catch(e) { alert("部署失败: " + e); }
+        }
+
+        async function deleteAutopsyReport(fileName) {
+            if(!confirm("确定要清除这份检修档案吗？底层记录将被释放！")) return;
+            try {
+                await fetch(`/api/audit/autopsy/reports/${fileName}`, { method: 'DELETE' });
+                openAutopsyReports();
+            } catch(e) { alert("清除失败"); }
+        }
+
+        // ================= 🔬 降维解析台逻辑 =================
+        let rawAnalyzerData = "";
+
+        async function openAnalyzer(event, id, path) {
+            if(event) event.stopPropagation();
+            try {
+                const res = await fetch(`${BASE_URL}/api/sessions/read?path=${encodeURIComponent(path)}`);
+                if(!res.ok) throw new Error("底层数据切片已被清理或释放");
+                const result = await res.json();
+                
+                rawAnalyzerData = JSON.stringify(result.data, null, 4);
+                
+                let coloredJson = rawAnalyzerData
+                    .replace(/"(status|action|ai_dynamic_stop|ai_dynamic_purge|role|type)"/g, '<span style="color:var(--purple);">"$1"</span>')
+                    .replace(/"(user|gemini|processing|completed|error)"/g, '<span style="color:var(--accent);">"$1"</span>')
+                    .replace(/:\s*([0-9]+)/g, ': <span style="color:var(--warn);">$1</span>');
+
+                document.getElementById('analyzer-target-id').innerText = `Target: ${id}`;
+                document.getElementById('analyzer-raw-json').innerHTML = coloredJson;
+                document.getElementById('analyzer-modal').style.display = 'block';
+            } catch(e) {
+                alert("解析失败: " + e.message);
+            }
+        }
+
+        function copyAnalyzerData() {
+            navigator.clipboard.writeText(rawAnalyzerData).then(() => {
+                const btn = document.querySelector('#analyzer-modal button');
+                const oldText = btn.innerText;
+                btn.innerText = "✅ 已复制";
+                setTimeout(() => btn.innerText = oldText, 2000);
+            });
+        }
+
+        // ================= 📥 源文件物理提取引擎 =================
+        async function downloadSourceFile(event, id, path) {
+            if(event) event.stopPropagation();
+            try {
+                const res = await fetch(`${BASE_URL}/api/sessions/read?path=${encodeURIComponent(path)}`);
+                if(!res.ok) throw new Error("底层数据切片已被清理或释放");
+                const result = await res.json();
+                
+                const dataStr = JSON.stringify(result.data, null, 4);
+                const blob = new Blob([dataStr], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `${id}_source.json`;
+                document.body.appendChild(a);
+                a.click();
+                
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch(e) {
+                alert("❌ 下载源文件失败: " + e.message);
+            }
+        }
+    </script>
+</body>
+</html>

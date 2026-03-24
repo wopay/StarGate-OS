@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI 智能工厂 - 总控管家与数字总仓</title>
+    <link rel="stylesheet" href="/style.css?v=999">
+    <style>
+        :root { 
+            --accent-color: #a8c7fa; 
+            --bg-dark: #131314; 
+            --bg-panel: #1e1f20; 
+            --border-color: #333639;
+        }
+        body { 
+            margin: 0; padding: 0; background-color: var(--bg-dark); color: #eee; 
+            font-family: system-ui, -apple-system, sans-serif;
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+        
+        /* 顶部导航栏 */
+        .header { 
+            padding: 1rem 2rem; border-bottom: 1px solid var(--border-color); 
+            display: flex; justify-content: space-between; align-items: center; 
+            background: var(--bg-panel); z-index: 10; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            flex-shrink: 0;
+        }
+        .header-left { display: flex; align-items: center; gap: 20px; }
+        .back-btn { display: flex; align-items: center; gap: 6px; color: var(--accent-color); text-decoration: none; font-size: 0.9rem; border: 1px solid var(--accent-color); padding: 6px 16px; border-radius: 20px; transition: 0.2s;}
+        .back-btn:hover { background: rgba(168,199,250,0.1); }
+        .header-title { display: flex; align-items: center; gap: 10px; font-size: 1.2rem; font-weight: bold; color: #fff;}
+        .header-subtitle { font-size: 0.8rem; color: #888; font-weight: normal; margin-top: 4px;}
+        
+        .header-actions { display: flex; gap: 12px; }
+        .action-btn { background: var(--bg-dark); color: #ccc; border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;}
+        .action-btn:hover { border-color: #777; color: #fff; }
+        .upload-btn { background: var(--accent-color); color: #111; border: none; padding: 8px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;}
+        .upload-btn:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(168,199,250,0.3); }
+
+        /* 分类栏与画廊 */
+        .category-bar { padding: 12px 2rem; border-bottom: 1px solid var(--border-color); display: flex; gap: 10px; overflow-x: auto; background: rgba(30, 31, 32, 0.5); flex-shrink: 0;}
+        .cat-tab { padding: 6px 16px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; border: 1px solid #444; color: #aaa; transition: 0.2s; white-space: nowrap;}
+        .cat-tab:hover { background: #333; color: #fff; }
+        .cat-tab.active { background: rgba(168,199,250,0.15); color: var(--accent-color); border-color: var(--accent-color); font-weight: bold;}
+        .gallery-container { flex: 1; overflow-y: auto; padding: 2rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; align-content: flex-start;}
+
+        .asset-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; position: relative; transition: all 0.3s ease; display: flex; flex-direction: column;}
+        .asset-card:hover { transform: translateY(-5px); border-color: #555; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .img-wrapper { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; overflow: hidden;}
+        .img-wrapper img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; cursor: pointer; }
+        .asset-card:hover .img-wrapper img { transform: scale(1.05); }
+
+        .card-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 50%, rgba(0,0,0,0.8) 100%); opacity: 0; transition: opacity 0.3s; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 12px; box-sizing: border-box;}
+        .asset-card:hover .card-overlay { opacity: 1; pointer-events: auto; }
+        .del-btn { align-self: flex-end; background: rgba(255,107,107,0.8); color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: bold; backdrop-filter: blur(4px); transition: 0.2s;}
+        .del-btn:hover { background: #ff6b6b; }
+        
+        .meta-info { padding: 16px; display: flex; flex-direction: column; gap: 8px; flex: 1;}
+        .meta-text { font-size: 0.8rem; color: #ccc; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;}
+        .meta-label { font-size: 0.7rem; color: #777; margin-bottom: 2px;}
+        .node-badge { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; backdrop-filter: blur(4px); z-index: 2; border: 1px solid rgba(255,255,255,0.2);}
+
+        /* 模态框统一风格 (兼容手机端) */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 1000; display: none; justify-content: center; align-items: center; padding: 20px;}
+        .modal { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; width: 100%; max-width: 600px; max-height: 85vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); box-sizing: border-box; }
+        .modal h3 { margin: 0 0 16px 0; color: #fff; font-size: 1.2rem; border-bottom: 1px solid #333; padding-bottom: 12px; display: flex; align-items: center; gap: 8px;}
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 0.85rem; color: #bbb; margin-bottom: 8px; font-weight: bold;}
+        .form-group input[type="text"], .form-group textarea, .form-group select { width: 100%; box-sizing: border-box; background: #0a0a0a; border: 1px solid #444; padding: 12px; color: #eee; border-radius: 8px; font-family: inherit; font-size: 0.9rem; transition: border 0.2s; outline: none; cursor: pointer;}
+        .form-group input[type="text"]:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--accent-color); }
+        
+        /* 范围滑块美化 */
+        .slider-container { display: flex; align-items: center; gap: 15px; }
+        input[type=range] { flex: 1; -webkit-appearance: none; background: #333; height: 6px; border-radius: 3px; outline: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent-color); cursor: pointer; transition: 0.2s; }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        .slider-val { background: #111; padding: 4px 10px; border-radius: 6px; border: 1px solid #444; font-family: monospace; font-size: 0.9rem; min-width: 40px; text-align: center;}
+
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #333; position: sticky; bottom: -24px; background: var(--bg-panel); padding-bottom: 10px;}
+        .btn-cancel { background: transparent; border: 1px solid #555; color: #ccc; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+        .btn-submit { background: var(--accent-color); border: none; color: #111; font-weight: bold; padding: 8px 20px; border-radius: 6px; cursor: pointer; }
+
+        .empty-state { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 50vh; color: #666; }
+        .empty-state svg { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.5; }
+
+        /* 👇 手机端专属适配 */
+        @media (max-width: 768px) {
+            .header { flex-direction: column; align-items: flex-start; gap: 15px; padding: 1rem; }
+            .header-actions { width: 100%; display: flex; justify-content: space-between; }
+            .action-btn, .upload-btn { flex: 1; justify-content: center; font-size: 0.8rem; padding: 8px; }
+            
+            .gallery-container { padding: 1rem; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;}
+            
+            .modal { padding: 16px; width: 100%; margin: 10px; max-height: 90vh;}
+            .modal-actions { position: relative; bottom: 0; background: transparent; padding-bottom: 0; }
+            .btn-cancel, .btn-submit { flex: 1; text-align: center; }
+            
+            .matrix-row { flex-direction: column; align-items: stretch !important; gap: 4px; }
+            .matrix-row select { width: 100% !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-left">
+            <a href="/" class="back-btn">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            </a>
+            <div>
+                <div class="header-title">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                    总控管家与数字总仓
+                </div>
+                <div class="header-subtitle">管理全域数字资产，塑造底层潜意识，指派领航管家。</div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="action-btn" onclick="openTuningModal()">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                模型底层调教
+            </button>
+            <button class="upload-btn" onclick="document.getElementById('upload-modal').style.display='flex'">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                注入节点
+            </button>
+        </div>
+    </div>
+
+    <div class="category-bar" id="category-bar">
+        <div class="cat-tab active" onclick="filterCategory('全部', this)">全部分类</div>
+    </div>
+
+    <div class="gallery-container" id="gallery-container">
+        <div class="empty-state">正在加载知识库...</div>
+    </div>
+
+    <div class="modal-overlay" id="upload-modal">
+        <div class="modal">
+            <h3>📥 人工注入知识资产</h3>
+            <form id="upload-form" onsubmit="submitUpload(event)">
+                <div class="form-group">
+                    <label>选取本地图片</label>
+                    <input type="file" id="file-input" accept="image/*" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>归属领域 (Domain)</label>
+                    <select id="domain-input" required>
+                        <option value="factory_dev">🚀 厂房底层自进化</option>
+                        <option value="nail_guild">💅 美甲师工会应用开发</option>
+                        <option value="design_vr">🏠 VR 空间设计中台</option>
+                        <option value="geek_sandbox">💻 极客具身沙盒</option>
+                        <option value="retail_ops">🛒 零售电商运营</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>归属节点分类 (如: 架构图、代码片段...)</label>
+                    <input type="text" id="cat-input" placeholder="输入新的分类节点名称" required>
+                </div>
+                <div class="form-group">
+                    <label>资产提示词 / 核心语义特征</label>
+                    <textarea id="prompt-input" rows="3" placeholder="描述这幅图的核心要素，以便 AI 未来进行语义检索..." required></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="document.getElementById('upload-modal').style.display='none'">取消</button>
+                    <button type="submit" class="btn-submit" id="submit-btn">写入高维空间</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="tuning-modal">
+        <div class="modal">
+            <h3>
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--accent-color)" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                底层调度引擎
+            </h3>
+            <form id="tuning-form" onsubmit="saveTuningConfig(event)">
+                
+                <div class="form-group" style="background: rgba(168, 199, 250, 0.05); padding: 15px; border-radius: 8px; border: 1px dashed var(--accent-color);">
+                    <label style="color: var(--accent-color); font-size: 1rem; margin-bottom: 12px; display: block;">👑 全局领航员矩阵 (总厂API & 分厂星门)</label>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div class="matrix-row" style="display: flex; align-items: center; justify-content: space-between;">
+                            <span style="color: #fff; font-size: 0.9rem;">🧠 Pro 思考模型 <span style="color:#888; font-size:0.75rem;">(统筹总管家)</span></span>
+                            <select id="pro-model-selector" style="width: 220px; padding: 6px; border-radius: 6px; background: #111; color: #fff; border: 1px solid #444;"></select>
+                        </div>
+                        <div class="matrix-row" style="display: flex; align-items: center; justify-content: space-between;">
+                            <span style="color: #fff; font-size: 0.9rem;">⚡ Flash 快速模型 <span style="color:#888; font-size:0.75rem;">(日常交互)</span></span>
+                            <select id="flash-model-selector" style="width: 220px; padding: 6px; border-radius: 6px; background: #111; color: #fff; border: 1px solid #444;"></select>
+                        </div>
+                        <div class="matrix-row" style="display: flex; align-items: center; justify-content: space-between;">
+                            <span style="color: #fff; font-size: 0.9rem;">🐝 Swarm 蜂群模型 <span style="color:#888; font-size:0.75rem;">(干活苦力)</span></span>
+                            <select id="swarm-model-selector" style="width: 220px; padding: 6px; border-radius: 6px; background: #111; color: #fff; border: 1px solid #444;"></select>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.75rem; color:#888; margin-top:12px; border-top: 1px dashed #333; padding-top: 8px;">
+                        这三个选项将直接绑定至中控台右下角的【智商切换器】中。
+                    </div>
+                </div>
+
+                <div class="form-group" style="background: rgba(255, 183, 77, 0.05); padding: 15px; border-radius: 8px; border: 1px dashed rgba(255, 183, 77, 0.3);">
+                    <label style="color: #ffb74d;">🛡️ 绝对潜意识钢印 (Soul Override)</label>
+                    <div style="font-size: 0.75rem; color:#888; margin-bottom:10px;">这是全局最高优先级的灵魂文件(<code>soul.md</code>)，将无损同步透传给星门特种兵。</div>
+                    <textarea id="soul-prompt" rows="4" placeholder="输入极客戒律，例如：1. 立场鲜明，不许含糊其辞。2. 删掉所有官方话术。3. 偶尔可以说脏话..." style="border-color: rgba(255, 183, 77, 0.5);"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>🧠 业务领域架构设定 (Domain System Prompt)</label>
+                    <div style="font-size: 0.75rem; color:#888; margin-bottom:6px;">控制 AI 在当前领域的职业身份（如 AI 研发专家、应用架构师）。</div>
+                    <textarea id="system-prompt" rows="2" placeholder="例如：你是一个极度严谨的 全栈 AI 架构师..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>🔥 创造力温度 (Temperature)</label>
+                    <div class="slider-container">
+                        <input type="range" id="model-temp" min="0" max="2" step="0.1" value="0.5" oninput="document.getElementById('temp-val').innerText = this.value">
+                        <span class="slider-val" id="temp-val">0.5</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>🎲 词汇坍缩率 / 核采样 (Top P)</label>
+                    <div class="slider-container">
+                        <input type="range" id="model-top-p" min="0.05" max="1.0" step="0.05" value="1.0" oninput="document.getElementById('top-p-val').innerText = this.value">
+                        <span class="slider-val" id="top-p-val">1.0</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>🚫 话题发散力 (Presence Penalty)</label>
+                    <div class="slider-container">
+                        <input type="range" id="model-penalty" min="-2.0" max="2.0" step="0.1" value="0.0" oninput="document.getElementById('penalty-val').innerText = this.value">
+                        <span class="slider-val" id="penalty-val">0.0</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>📏 单次最大输出 (Max Tokens)</label>
+                    <div class="slider-container">
+                        <input type="range" id="model-max-tokens" min="500" max="8192" step="100" value="3000" oninput="document.getElementById('tokens-val').innerText = this.value">
+                        <span class="slider-val" id="tokens-val">3000</span>
+                    </div>
+                </div>
+
+                <div class="form-group" style="border-top: 1px dashed #333; padding-top: 16px;">
+                    <label>🎯 RAG 经验召回数</label>
+                    <div class="slider-container">
+                        <input type="range" id="rag-limit" min="0" max="5" step="1" value="2" oninput="document.getElementById('rag-val').innerText = this.value">
+                        <span class="slider-val" id="rag-val">2</span>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="document.getElementById('tuning-modal').style.display='none'">放弃修改</button>
+                    <button type="submit" class="btn-submit" id="tuning-submit-btn">注入神经网络</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let allAssets = [];
+
+        // ===== 知识库画廊逻辑 =====
+        async function loadGallery() {
+            const container = document.getElementById('gallery-container');
+            const catBar = document.getElementById('category-bar');
+            try {
+                const res = await fetch('/api/gallery');
+                const json = await res.json();
+                allAssets = json.data || [];
+
+                if (allAssets.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            <div style="font-size:1.1rem; color:#eee; margin-bottom:8px;">知识库空空如也</div>
+                            <div style="font-size:0.85rem;">点击右上角注入节点，建立 AI 认知底层数据。</div>
+                        </div>`;
+                    return;
+                }
+
+                const categories = new Set();
+                allAssets.forEach(item => {
+                    const cat = item.meta.category || (item.meta.type === "manual_upload" ? "人工干预" : "引擎自动沉淀");
+                    categories.add(cat);
+                    item.computedCat = cat;
+                });
+
+                catBar.innerHTML = '<div class="cat-tab active" onclick="filterCategory(\'全部\', this)">全部分类</div>';
+                categories.forEach(cat => {
+                    catBar.innerHTML += `<div class="cat-tab" onclick="filterCategory('${cat}', this)">${cat}</div>`;
+                });
+
+                renderCards(allAssets);
+            } catch (e) {
+                container.innerHTML = '<div class="empty-state" style="color:#ff6b6b;">引擎连接中断。</div>';
+            }
+        }
+
+        function filterCategory(cat, el) {
+            document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            renderCards(cat === '全部' ? allAssets : allAssets.filter(item => item.computedCat === cat));
+        }
+
+        function renderCards(items) {
+            const container = document.getElementById('gallery-container');
+            container.innerHTML = '';
+            if(items.length === 0) {
+                container.innerHTML = '<div class="empty-state">该分类下暂无资产</div>';
+                return;
+            }
+
+            items.forEach(item => {
+                const meta = item.meta;
+                const date = new Date(meta.timestamp).toLocaleString('zh-CN', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+                const isManual = meta.type === 'manual_upload';
+                const badgeLabel = isManual ? '🛡️ 核心节点 (高权重)' : '🤖 衍生数据';
+                
+                // 展示该资产属于哪个领域 (如果存在的话)
+                const domainLabel = meta.domain_id ? `[${meta.domain_id}] ` : '';
+                
+                const card = document.createElement('div');
+                card.className = 'asset-card';
+                if(isManual) card.style.borderColor = 'rgba(168,199,250,0.5)';
+                
+                card.innerHTML = `
+                    <div class="img-wrapper">
+                        <div class="node-badge" style="${isManual ? 'background:var(--accent-color); color:#111;' : ''}">${domainLabel}${item.computedCat}</div>
+                        <img src="${item.image_url}" onclick="window.open(this.src)">
+                        <div class="card-overlay">
+                            <button class="del-btn" onclick="deleteAsset('${item.filename}', this)">🗑️ 剔除并清洗向量</button>
+                            <div style="color:#fff; font-size:0.7rem; text-shadow:0 2px 4px rgba(0,0,0,0.8); display:flex; justify-content:space-between;">
+                                <span>🕒 ${date}</span><span>${badgeLabel}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="meta-info">
+                        <div style="margin-bottom: 8px;">
+                            <div class="meta-label">🎯 语义锚点 / 提示词</div>
+                            <div class="meta-text" style="color: #fff; font-weight: 500;">${meta.user_input || '无语义特征'}</div>
+                        </div>
+                        <div style="border-top: 1px dashed #333; padding-top: 8px;">
+                            <div class="meta-label">⚙️ 底层日志</div>
+                            <div class="meta-text" style="font-family: monospace; font-size:0.75rem; color:#999;">${meta.instruction || meta.ai_prompt || '人工强行注入'}</div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function submitUpload(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            btn.innerText = '写入中...';
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', document.getElementById('file-input').files[0]);
+            formData.append('domain_id', document.getElementById('domain-input').value);
+            formData.append('category', document.getElementById('cat-input').value);
+            formData.append('user_input', document.getElementById('prompt-input').value);
+            formData.append('instruction', '由管理员设定的知识基准线');
+
+            try {
+                const res = await fetch('/api/gallery/upload', { method: 'POST', body: formData });
+                if (res.ok) {
+                    document.getElementById('upload-modal').style.display = 'none';
+                    document.getElementById('upload-form').reset();
+                    await loadGallery();
+                } else alert('写入失败');
+            } catch (err) { alert('网络错误'); } 
+            finally { btn.innerText = '写入高维空间'; btn.disabled = false; }
+        }
+
+        async function deleteAsset(filename, btnElement) {
+            if (!confirm("⚠️ 抹除操作将同步清洗数据库中的特征向量，确定执行吗？")) return;
+            const card = btnElement.closest('.asset-card');
+            card.style.opacity = '0.5';
+            btnElement.innerHTML = '清洗中...';
+            try {
+                if ((await fetch(`/api/gallery/${filename}`, { method: 'DELETE' })).ok) {
+                    card.style.transform = 'scale(0.8)';
+                    setTimeout(loadGallery, 300);
+                }
+            } catch (e) { alert("清洗失败"); card.style.opacity = '1'; btnElement.innerHTML = '🗑️ 剔除并清洗向量'; }
+        }
+
+        // ===== 核心大模型调教逻辑 =====
+        async function openTuningModal() {
+            document.getElementById('tuning-modal').style.display = 'flex';
+            try {
+                const res = await fetch('/api/config/ai');
+                const config = await res.json();
+                
+                const proSelector = document.getElementById('pro-model-selector');
+                const flashSelector = document.getElementById('flash-model-selector');
+                const swarmSelector = document.getElementById('swarm-model-selector');
+
+                let flatVendors = [];
+                if (config.categories) {
+                    config.categories.forEach(cat => {
+                        cat.nodes.forEach(n => {
+                            if (n.enabled !== false) flatVendors.push(n);
+                        });
+                    });
+                } else if (config.vendors) {
+                    flatVendors = config.vendors;
+                }
+                
+                if (flatVendors.length > 0) {
+                    // 💡 仅此处逻辑修改：下拉框里自动为星门特种兵打上显眼的标记
+                    const optionsHtml = `<option value="">自动兜底 (Fallback)</option>` + flatVendors.map(v => {
+                        const stargateLabel = v.is_agentic ? ' 🌌[星门直连]' : '';
+                        return `<option value="${v.id}">${v.icon || '🤖'} ${v.name}${stargateLabel}</option>`;
+                    }).join('');
+                    
+                    proSelector.innerHTML = optionsHtml;
+                    flashSelector.innerHTML = optionsHtml;
+                    swarmSelector.innerHTML = optionsHtml;
+                    
+                    if (config.pro_model_id) proSelector.value = config.pro_model_id;
+                    if (config.flash_model_id) flashSelector.value = config.flash_model_id;
+                    if (config.swarm_model_id) swarmSelector.value = config.swarm_model_id;
+                } else {
+                    const emptyOpt = '<option value="">⚠️ 集群为空</option>';
+                    proSelector.innerHTML = emptyOpt;
+                    flashSelector.innerHTML = emptyOpt;
+                    swarmSelector.innerHTML = emptyOpt;
+                }
+                
+                try {
+                    const soulRes = await fetch('/api/config/soul');
+                    if (soulRes.ok) {
+                        const soulData = await soulRes.json();
+                        document.getElementById('soul-prompt').value = soulData.content || "";
+                    }
+                } catch(e) { console.log('soul.md 未找到或无法读取', e); }
+                
+                document.getElementById('system-prompt').value = config.system_prompt || "你是一个专业的研发与应用架构师。你的任务是根据上下文执行指令。";
+                
+                const temp = config.temperature !== undefined ? config.temperature : 0.5;
+                document.getElementById('model-temp').value = temp;
+                document.getElementById('temp-val').innerText = temp;
+
+                const topP = config.top_p !== undefined ? config.top_p : 1.0;
+                document.getElementById('model-top-p').value = topP;
+                document.getElementById('top-p-val').innerText = topP;
+
+                const penalty = config.presence_penalty !== undefined ? config.presence_penalty : 0.0;
+                document.getElementById('model-penalty').value = penalty;
+                document.getElementById('penalty-val').innerText = penalty;
+
+                const maxTokens = config.max_tokens !== undefined ? config.max_tokens : 3000;
+                document.getElementById('model-max-tokens').value = maxTokens;
+                document.getElementById('tokens-val').innerText = maxTokens;
+
+                const ragLimit = config.rag_limit !== undefined ? config.rag_limit : 2;
+                document.getElementById('rag-limit').value = ragLimit;
+                document.getElementById('rag-val').innerText = ragLimit;
+
+            } catch(e) {
+                console.error("读取配置失败", e);
+            }
+        }
+
+        async function saveTuningConfig(e) {
+            e.preventDefault();
+            const btn = document.getElementById('tuning-submit-btn');
+            btn.innerText = '正在下发指令...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/config/ai');
+                const currentConfig = await res.json();
+
+                currentConfig.pro_model_id = document.getElementById('pro-model-selector').value;
+                currentConfig.flash_model_id = document.getElementById('flash-model-selector').value;
+                currentConfig.swarm_model_id = document.getElementById('swarm-model-selector').value;
+                
+                currentConfig.system_prompt = document.getElementById('system-prompt').value;
+                currentConfig.temperature = parseFloat(document.getElementById('model-temp').value);
+                currentConfig.top_p = parseFloat(document.getElementById('model-top-p').value);
+                currentConfig.presence_penalty = parseFloat(document.getElementById('model-penalty').value);
+                currentConfig.max_tokens = parseInt(document.getElementById('model-max-tokens').value);
+                currentConfig.rag_limit = parseInt(document.getElementById('rag-limit').value);
+
+                const saveRes = await fetch('/api/config/ai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentConfig)
+                });
+                
+                const soulText = document.getElementById('soul-prompt').value;
+                const soulFormData = new FormData();
+                soulFormData.append('content', soulText);
+                
+                await fetch('/api/config/soul', {
+                    method: 'POST',
+                    body: soulFormData
+                });
+
+                if(saveRes.ok) {
+                    document.getElementById('tuning-modal').style.display = 'none';
+                    alert("✅ 领航员矩阵与灵魂钢印已成功注入！下一轮对话即刻生效。");
+                } else {
+                    alert("参数保存失败");
+                }
+            } catch(err) {
+                alert("网络异常，指令下发失败");
+            } finally {
+                btn.innerText = '注入神经网络';
+                btn.disabled = false;
+            }
+        }
+
+        window.onload = loadGallery;
+    </script>
+</body>
+</html>

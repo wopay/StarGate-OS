@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 阿卡什档案馆 (星门圆桌监控)</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background-color: #0a0a0c; color: #e3e3e3; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        
+        /* 顶部导航 */
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background: #161719; border-bottom: 1px solid rgba(168,199,250,0.1); flex-shrink: 0; z-index: 10; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        .header-title { font-size: 1.5rem; font-weight: 800; margin: 0; background: -webkit-linear-gradient(0deg, #a8c7fa, #d8b4fe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 10px; }
+        .nav-links { display: flex; gap: 15px; }
+        .control-btn { background: rgba(168, 199, 250, 0.1); border: 1px solid rgba(168, 199, 250, 0.3); color: #a8c7fa; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.3s; text-decoration: none; display: flex; align-items: center; gap: 6px; }
+        .control-btn:hover { background: rgba(168, 199, 250, 0.2); border-color: #a8c7fa; box-shadow: 0 0 15px rgba(168,199,250,0.15); transform: translateY(-1px); }
+
+        /* 主体分栏结构 */
+        .main-layout { display: flex; flex: 1; overflow: hidden; }
+        
+        /* 左侧档案列表 */
+        .sidebar { width: 320px; background: #0f1013; border-right: 1px solid #2a2b2f; display: flex; flex-direction: column; flex-shrink: 0; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #2a2b2f; font-weight: bold; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+        .refresh-btn { background: none; border: none; color: #a8c7fa; cursor: pointer; font-size: 1.1rem; padding: 5px; transition: transform 0.3s; }
+        .refresh-btn:hover { transform: rotate(180deg); }
+        .archive-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        
+        .archive-card { background: rgba(255,255,255,0.02); border: 1px solid #3a3b3f; border-radius: 10px; padding: 15px; cursor: pointer; transition: all 0.2s; position: relative; }
+        .archive-card:hover { border-color: #a8c7fa; background: rgba(168,199,250,0.05); }
+        .archive-card.active { border-color: #d8b4fe; background: rgba(216,180,254,0.08); box-shadow: 0 0 15px rgba(216,180,254,0.1); }
+        .archive-title { font-weight: 600; color: #fff; margin-bottom: 8px; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 25px; }
+        .archive-date { font-size: 0.8rem; color: #8a8d93; display: flex; align-items: center; gap: 5px; }
+        .delete-btn { position: absolute; top: 12px; right: 12px; background: none; border: none; color: #ff6b6b; cursor: pointer; opacity: 0.5; transition: all 0.2s; font-size: 1.1rem; line-height: 1; padding: 5px; border-radius: 4px; }
+        .archive-card:hover .delete-btn { opacity: 1; }
+        .delete-btn:hover { background: rgba(255,107,107,0.1); transform: scale(1.1); }
+
+        /* 右侧监控大屏 */
+        .workspace { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #0a0a0c; position: relative; }
+        .workspace-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #5a5b5f; }
+        
+        .meeting-view { display: none; flex-direction: column; height: 100%; }
+        .meeting-view.active { display: flex; }
+        
+        /* 公共黑板区 (上半部分) */
+        .center-board-container { flex: 3; padding: 25px; overflow-y: auto; border-bottom: 1px solid #2a2b2f; background: linear-gradient(180deg, rgba(16,17,20,0.8) 0%, rgba(10,10,12,1) 100%); }
+        .board-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; position: sticky; top: 0; background: rgba(16,17,20,0.9); padding: 10px; border-radius: 8px; backdrop-filter: blur(5px); z-index: 5; border: 1px solid rgba(168,199,250,0.2); }
+        .board-title { margin: 0; font-size: 1.2rem; color: #a8c7fa; display: flex; align-items: center; gap: 8px; }
+        .live-indicator { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: #4caf50; font-weight: bold; background: rgba(76,175,80,0.1); padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(76,175,80,0.3); }
+        .live-dot { width: 8px; height: 8px; background: #4caf50; border-radius: 50%; animation: pulse 1.5s infinite; }
+        
+        .markdown-body { font-size: 0.95rem; line-height: 1.7; color: #e3e3e3; }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 { color: #fff; border-bottom: 1px solid #333; padding-bottom: 8px; margin-top: 25px; }
+        .markdown-body p { margin-bottom: 15px; }
+        .markdown-body blockquote { border-left: 4px solid #a8c7fa; margin: 0; padding: 10px 20px; background: rgba(168,199,250,0.05); border-radius: 0 8px 8px 0; }
+        .markdown-body pre { background: #161719; padding: 15px; border-radius: 8px; overflow-x: auto; border: 1px solid #333; }
+        .markdown-body code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+
+        /* 特工公文包区 (下半部分网格) */
+        .briefcases-container { flex: 2; padding: 20px 25px; background: #0f1013; overflow-y: auto; }
+        .briefcases-header { margin: 0 0 15px 0; font-size: 1.1rem; color: #d8b4fe; display: flex; align-items: center; gap: 8px; }
+        .briefcases-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        
+        .briefcase-card { background: #161719; border: 1px dashed #444; border-radius: 12px; padding: 15px; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); display: flex; flex-direction: column; max-height: 350px; }
+        .briefcase-header { font-weight: bold; color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; }
+        .briefcase-id { font-family: monospace; font-size: 0.75rem; color: #8a8d93; background: #222; padding: 2px 6px; border-radius: 4px; }
+        .briefcase-content { overflow-y: auto; flex: 1; padding-right: 5px; font-size: 0.85rem; color: #ccc; }
+        .briefcase-content::-webkit-scrollbar { width: 6px; }
+        .briefcase-content::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+        
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(76, 175, 80, 0); } 100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); } }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1 class="header-title">📚 阿卡什记录馆 <span style="font-size:1rem; color:#8a8d93; font-weight:normal;">| 全息会议监控</span></h1>
+        <div class="nav-links">
+            <a href="/stargate_panel.html" class="control-btn" style="border-color:#d8b4fe; color:#d8b4fe;">🚀 开启新会议</a>
+            <a href="/" class="control-btn">🏠 返回主脑</a>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <span>时空快照夹</span>
+                <button class="refresh-btn" onclick="loadArchives()" title="刷新历史纪录">🔄</button>
+            </div>
+            <div class="archive-list" id="archiveList">
+                <div style="text-align:center; padding:20px; color:#555;">加载中...</div>
+            </div>
+        </aside>
+
+        <main class="workspace">
+            <div class="workspace-empty" id="emptyState">
+                <div style="font-size: 4rem; margin-bottom: 20px; opacity: 0.5;">🗄️</div>
+                <h2>请在左侧选择一个时空快照</h2>
+                <p>点击任意档案，即可唤醒当时的会议纪要与特工公文包。</p>
+            </div>
+
+            <div class="meeting-view" id="meetingView">
+                <div class="center-board-container">
+                    <div class="board-header">
+                        <h2 class="board-title">📝 领域公共黑板 (Center Board)</h2>
+                        <div class="live-indicator" id="liveIndicator" title="实时连接已建立">
+                            <div class="live-dot"></div>
+                            <span>全息视界 (Live)</span>
+                        </div>
+                    </div>
+                    <div class="markdown-body" id="centerBoardContent">
+                        </div>
+                </div>
+
+                <div class="briefcases-container">
+                    <h3 class="briefcases-header">💼 特工私有记忆矩阵 (Briefcases)</h3>
+                    <div class="briefcases-grid" id="briefcasesGrid">
+                        </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentMeetingId = null;
+        let pollTimer = null;
+
+        // 1. 初始化拉取档案列表
+        async function loadArchives() {
+            const listEl = document.getElementById('archiveList');
+            try {
+                const res = await fetch('/api/stargate/archives');
+                const result = await res.json();
+                
+                if (result.data.length === 0) {
+                    listEl.innerHTML = '<div style="text-align:center; padding:20px; color:#555;">暂无时空快照</div>';
+                    return;
+                }
+
+                listEl.innerHTML = '';
+                result.data.forEach(arc => {
+                    const isActive = currentMeetingId === arc.meeting_id ? 'active' : '';
+                    const card = document.createElement('div');
+                    card.className = `archive-card ${isActive}`;
+                    card.innerHTML = `
+                        <button class="delete-btn" onclick="deleteArchive(event, '${arc.meeting_id}')" title="物理抹除此快照">🗑️</button>
+                        <div class="archive-title" title="${arc.meeting_id}">会议档案 ${arc.meeting_id.split('_').pop()}</div>
+                        <div class="archive-date">⏱️ ${arc.date}</div>
+                    `;
+                    card.onclick = () => openMeeting(arc.meeting_id);
+                    listEl.appendChild(card);
+                });
+            } catch (e) {
+                console.error(e);
+                listEl.innerHTML = `<div style="color:#ff6b6b; padding:15px; font-size:0.85rem;">读取失败: ${e.message}</div>`;
+            }
+        }
+
+        // 2. 物理抹除
+        async function deleteArchive(event, meetingId) {
+            event.stopPropagation(); // 阻止触发卡片点击
+            if (!confirm(`⚠️ 警告：您正在物理抹除时空快照 [${meetingId}]。这将会彻底销毁所有特工的公文包与会议纪要，无法恢复。\n\n确认执行？`)) return;
+            
+            try {
+                const res = await fetch(`/api/stargate/archives/${meetingId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    if (currentMeetingId === meetingId) {
+                        currentMeetingId = null;
+                        document.getElementById('emptyState').style.display = 'flex';
+                        document.getElementById('meetingView').classList.remove('active');
+                        stopPolling();
+                    }
+                    loadArchives();
+                } else {
+                    alert("抹除失败，可能是文件被系统锁定。");
+                }
+            } catch (e) {
+                alert(`网络错误: ${e.message}`);
+            }
+        }
+
+        // 3. 打开监控大屏
+        function openMeeting(meetingId) {
+            currentMeetingId = meetingId;
+            
+            // UI 切换
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('meetingView').classList.add('active');
+            
+            // 高亮左侧卡片
+            document.querySelectorAll('.archive-card').forEach(c => c.classList.remove('active'));
+            const targetCard = Array.from(document.querySelectorAll('.archive-title')).find(el => el.textContent.includes(meetingId.split('_').pop()));
+            if(targetCard) targetCard.parentElement.classList.add('active');
+
+            // 启动全息投射
+            fetchMeetingDetails(meetingId);
+            startPolling(meetingId);
+        }
+
+        // 4. 拉取核心数据并渲染 (支持 Markdown)
+        async function fetchMeetingDetails(meetingId) {
+            try {
+                const res = await fetch(`/api/stargate/archives/${meetingId}`);
+                if (!res.ok) throw new Error("快照读取失败");
+                const result = await res.json();
+                const data = result.data;
+
+                // 渲染公共黑板 (使用 Marked.js 渲染 Markdown)
+                const boardEl = document.getElementById('centerBoardContent');
+                if (data.center_board) {
+                    boardEl.innerHTML = marked.parse(data.center_board);
+                    // 自动滚动到底部
+                    const container = boardEl.parentElement;
+                    container.scrollTop = container.scrollHeight;
+                } else {
+                    boardEl.innerHTML = '<p style="color:#555; text-align:center;">黑板尚无内容...</p>';
+                }
+
+                // 渲染特工公文包网格
+                const gridEl = document.getElementById('briefcasesGrid');
+                gridEl.innerHTML = '';
+                
+                if (Object.keys(data.briefcases).length === 0) {
+                    gridEl.innerHTML = '<div style="color:#555; grid-column:1/-1;">暂无特工公文包数据...</div>';
+                    return;
+                }
+
+                for (const [agentId, memory] of Object.entries(data.briefcases)) {
+                    // 提取第一行作为身份标识（如果匹配不到则用 agentId）
+                    let roleStr = "与会特工";
+                    const roleMatch = memory.match(/你是本次会议的\s*(.*?)\s*。/);
+                    if (roleMatch) roleStr = roleMatch[1];
+
+                    const card = document.createElement('div');
+                    card.className = 'briefcase-card';
+                    card.innerHTML = `
+                        <div class="briefcase-header">
+                            <span style="color:#a8c7fa;">🤖 ${roleStr}</span>
+                            <span class="briefcase-id">${agentId.split('_').pop()}</span>
+                        </div>
+                        <div class="briefcase-content markdown-body">
+                            ${marked.parse(memory)}
+                        </div>
+                    `;
+                    gridEl.appendChild(card);
+                    
+                    // 让每个公文包也自动滚动到底部看最新记忆
+                    const contentDiv = card.querySelector('.briefcase-content');
+                    contentDiv.scrollTop = contentDiv.scrollHeight;
+                }
+                
+                // 动画提示更新成功
+                const indicator = document.getElementById('liveIndicator');
+                indicator.style.transform = 'scale(1.1)';
+                setTimeout(() => indicator.style.transform = 'scale(1)', 200);
+
+            } catch (e) {
+                console.error("观战流中断:", e);
+                document.getElementById('liveIndicator').querySelector('span').textContent = '连接断开';
+                document.getElementById('liveIndicator').querySelector('.live-dot').style.background = '#ff6b6b';
+            }
+        }
+
+        // 5. 动态轮询：每 3 秒全息刷新一次
+        function startPolling(meetingId) {
+            stopPolling();
+            // 恢复绿灯状态
+            document.getElementById('liveIndicator').querySelector('span').textContent = '全息视界 (Live)';
+            document.getElementById('liveIndicator').querySelector('.live-dot').style.background = '#4caf50';
+            
+            pollTimer = setInterval(() => {
+                if (currentMeetingId === meetingId) {
+                    fetchMeetingDetails(meetingId);
+                }
+            }, 3000); // 3秒刷新一次，呈现会议动态
+        }
+
+        function stopPolling() {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+        }
+
+        // 初始化
+        window.addEventListener('DOMContentLoaded', loadArchives);
+    </script>
+</body>
+</html>

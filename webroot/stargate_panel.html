@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌌 星门圆桌会议控制台</title>
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        body { margin: 0; padding: 0; background-color: #0a0a0c; color: #e3e3e3; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .stargate-container { max-width: 1200px; margin: 0 auto; padding: 30px; display: grid; grid-template-columns: 350px 1fr; gap: 30px; }
+        
+        .panel-header { display: flex; justify-content: space-between; align-items: center; grid-column: 1 / -1; margin-bottom: 20px; border-bottom: 1px solid rgba(168,199,250,0.1); padding-bottom: 20px; }
+        .panel-title { font-size: 1.8rem; font-weight: 800; margin: 0; background: -webkit-linear-gradient(0deg, #a8c7fa, #d8b4fe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 12px; }
+        
+        .control-btn { background: rgba(168, 199, 250, 0.1); border: 1px solid rgba(168, 199, 250, 0.3); color: #a8c7fa; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+        .control-btn:hover { background: rgba(168, 199, 250, 0.2); border-color: #a8c7fa; box-shadow: 0 0 15px rgba(168,199,250,0.15); transform: translateY(-1px); }
+        .primary-btn { background: linear-gradient(135deg, #a8c7fa 0%, #d8b4fe 100%); color: #0a0a0c; border: none; box-shadow: 0 4px 15px rgba(168,199,250,0.25); }
+        .primary-btn:hover { background: linear-gradient(135deg, #b8d7ff 0%, #e8c4ff 100%); box-shadow: 0 6px 20px rgba(168,199,250,0.4); transform: translateY(-2px); }
+        .danger-btn { background: rgba(255, 107, 107, 0.1); border-color: rgba(255, 107, 107, 0.3); color: #ff6b6b; }
+        .danger-btn:hover { background: rgba(255, 107, 107, 0.2); border-color: #ff6b6b; }
+
+        .config-card { background: #161719; border: 1px solid #2a2b2f; border-radius: 16px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 20px; }
+        .card-title { font-size: 1.1rem; color: #fff; margin: 0 0 10px 0; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        .input-group label { font-size: 0.85rem; color: #8a8d93; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+        .input-group input, .input-group select, .input-group textarea { background: #0a0a0c; border: 1px solid #3a3b3f; color: #e3e3e3; padding: 12px 15px; border-radius: 8px; font-size: 0.95rem; transition: border-color 0.2s; outline: none; }
+        .input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: #a8c7fa; }
+        .input-group textarea { resize: vertical; min-height: 100px; font-family: inherit; }
+
+        .agent-list { display: flex; flex-direction: column; gap: 15px; }
+        .agent-item { background: rgba(255,255,255,0.02); border: 1px solid #3a3b3f; border-radius: 12px; padding: 20px; position: relative; transition: all 0.3s; animation: slideIn 0.3s ease-out; }
+        .agent-item:hover { border-color: #5a5b5f; background: rgba(255,255,255,0.04); }
+        .agent-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .agent-index { font-weight: 800; color: #d8b4fe; font-size: 1.2rem; opacity: 0.8; }
+        .agent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .remove-agent { position: absolute; top: 15px; right: 15px; background: none; border: none; color: #8a8d93; cursor: pointer; font-size: 1.2rem; transition: color 0.2s; padding: 5px; line-height: 1; }
+        .remove-agent:hover { color: #ff6b6b; }
+
+        #statusOverlay { position: fixed; top: 20px; right: 20px; padding: 15px 25px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; z-index: 1000; transform: translateX(120%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 5px 20px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 10px; }
+        #statusOverlay.show { transform: translateX(0); }
+        #statusOverlay.success { background: rgba(76, 175, 80, 0.15); border: 1px solid rgba(76, 175, 80, 0.4); color: #81c784; }
+        #statusOverlay.error { background: rgba(255, 107, 107, 0.15); border: 1px solid rgba(255, 107, 107, 0.4); color: #ff8a80; }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .empty-state { text-align: center; padding: 40px 20px; color: #8a8d93; border: 1px dashed #3a3b3f; border-radius: 12px; }
+    </style>
+</head>
+<body>
+
+    <div id="statusOverlay">
+        <span class="icon"></span>
+        <span class="text"></span>
+    </div>
+
+    <div class="stargate-container">
+        <div class="panel-header">
+            <h1 class="panel-title">🌌 星门圆桌控制台</h1>
+            <div style="display: flex; gap: 15px;">
+                <a href="/" class="control-btn">🏠 返回主脑</a>
+                <a href="/archives.html" class="control-btn" style="border-color: #d8b4fe; color: #d8b4fe;">📚 阿卡什档案馆</a>
+            </div>
+        </div>
+
+        <div class="config-card">
+            <h2 class="card-title">⚙️ 会议中枢法则</h2>
+            
+            <div class="input-group">
+                <label>核心议题 (Topic)</label>
+                <textarea id="meetingTopic" placeholder="例如：我们需要设计一款赛博朋克风格的独立游戏，请各位畅所欲言..."></textarea>
+            </div>
+
+            <div class="input-group">
+                <label>探讨轮数 (Rounds)</label>
+                <input type="number" id="meetingRounds" value="3" min="1" max="20">
+            </div>
+
+            <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid #2a2b2f;">
+                <button class="control-btn primary-btn" style="width: 100%; justify-content: center; padding: 15px; font-size: 1.05rem;" onclick="igniteStargate()" id="igniteBtn">
+                    🚀 一键点爆星门 (Start Meeting)
+                </button>
+            </div>
+        </div>
+
+        <div class="config-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h2 class="card-title" style="margin:0;">👥 圆桌特工阵容</h2>
+                <button class="control-btn" onclick="addAgentCard()">➕ 征召新特工</button>
+            </div>
+            
+            <div id="agentListContainer" class="agent-list">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        let availableVendors = [];
+        let agentCounter = 0;
+
+        // 1. 初始化：拉取物理算力池
+        async function initRegistry() {
+            showStatus('loading', '正在扫描全域算力池...');
+            try {
+                const res = await fetch('/api/config/ai');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                
+                availableVendors = [];
+                if (data.categories) {
+                    data.categories.forEach(cat => {
+                        if(cat.nodes) availableVendors.push(...cat.nodes);
+                    });
+                } else if (data.vendors) {
+                    availableVendors = data.vendors;
+                }
+                
+                if (availableVendors.length === 0) throw new Error("未找到可用算力配置");
+                
+                // 默认初始化三个基础角色
+                addAgentCard("架构师 (System Architect)");
+                addAgentCard("主美 (Art Director)");
+                addAgentCard("反对者 (Devil's Advocate)");
+                
+                showStatus('success', '算力池接驳完毕，机床待命。');
+            } catch (e) {
+                console.error(e);
+                showStatus('error', '算力池拉取失败，请检查 ai_core.json');
+                document.getElementById('agentListContainer').innerHTML = `<div class="empty-state">⚠️ 无法连接到算力引擎：${e.message}</div>`;
+            }
+        }
+
+        // 2. 动态捏人：生成特工卡片
+        function addAgentCard(defaultRole = "") {
+            if(availableVendors.length === 0) return;
+            agentCounter++;
+            const agentId = `agent_${Math.random().toString(36).substring(2, 8)}`;
+            
+            // 生成模型下拉列表
+            let optionsHtml = '';
+            availableVendors.forEach((v, index) => {
+                // 简单做个随机打散，避免全都用同一个模型
+                const selected = (agentCounter % availableVendors.length === index) ? 'selected' : '';
+                optionsHtml += `<option value="${v.id}" ${selected}>[${v.name}] - ${v.remark || '通用'}</option>`;
+            });
+
+            const cardHtml = `
+                <div class="agent-item" id="card_${agentId}">
+                    <button class="remove-agent" onclick="removeAgentCard('${agentId}')" title="抹杀该特工">×</button>
+                    <div class="agent-header">
+                        <span class="agent-index">特工 0${agentCounter}</span>
+                    </div>
+                    <div class="agent-grid">
+                        <div class="input-group">
+                            <label>赋予身份 (Role)</label>
+                            <input type="text" class="agent-role" value="${defaultRole}" placeholder="例如: 前端开发专家" required>
+                        </div>
+                        <div class="input-group">
+                            <label>分配物理大脑 (Vendor)</label>
+                            <select class="agent-vendor">
+                                ${optionsHtml}
+                            </select>
+                        </div>
+                    </div>
+                    <input type="hidden" class="agent-id" value="${agentId}">
+                </div>
+            `;
+            
+            const container = document.getElementById('agentListContainer');
+            // 如果只有 empty-state，先清空
+            if(container.querySelector('.empty-state')) container.innerHTML = '';
+            container.insertAdjacentHTML('beforeend', cardHtml);
+        }
+
+        function removeAgentCard(agentId) {
+            const card = document.getElementById(`card_${agentId}`);
+            if (card) {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(-10px)';
+                setTimeout(() => card.remove(), 300);
+            }
+        }
+
+        // 3. 核心通讯：向后方大动脉发射 JSON 脉冲
+        async function igniteStargate() {
+            const topic = document.getElementById('meetingTopic').value.trim();
+            const rounds = parseInt(document.getElementById('meetingRounds').value);
+            
+            if (!topic) {
+                showStatus('error', '厂长，请确立会议核心议题！');
+                return;
+            }
+
+            // 收集所有存活的特工数据
+            const agentCards = document.querySelectorAll('.agent-item');
+            if (agentCards.length < 2) {
+                showStatus('error', '圆桌会议至少需要两名特工参与论战！');
+                return;
+            }
+
+            const agentsConfig = [];
+            let hasError = false;
+            agentCards.forEach(card => {
+                const role = card.querySelector('.agent-role').value.trim();
+                const vendorId = card.querySelector('.agent-vendor').value;
+                const id = card.querySelector('.agent-id').value;
+                
+                if (!role) { hasError = true; card.querySelector('.agent-role').style.borderColor = '#ff6b6b'; }
+                else { card.querySelector('.agent-role').style.borderColor = '#3a3b3f'; }
+                
+                agentsConfig.push({ id, role, vendor_id: vendorId });
+            });
+
+            if (hasError) {
+                showStatus('error', '存在未赋魂的特工，请完善身份信息！');
+                return;
+            }
+
+            const meetingId = `SG_${new Date().getTime().toString().slice(-6)}_${Math.random().toString(36).substring(2,6).toUpperCase()}`;
+            const payload = {
+                meeting_id: meetingId,
+                topic: topic,
+                rounds: rounds,
+                agents_config: agentsConfig
+            };
+
+            const btn = document.getElementById('igniteBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⚡ 空间折叠中...';
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+
+            try {
+                const res = await fetch('/api/stargate/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || data.error || '星门开启失败');
+
+                showStatus('success', `✨ 成功！会议脉冲已送达后台，代号: ${meetingId}`);
+                
+                // 成功后按钮变绿并提示跳转
+                btn.innerHTML = '✅ 会议已在后台启动！前往档案馆 ➔';
+                btn.style.background = 'linear-gradient(135deg, #4caf50 0%, #81c784 100%)';
+                btn.style.color = '#fff';
+                btn.style.opacity = '1';
+                btn.onclick = () => window.location.href = '/archives.html';
+
+            } catch (e) {
+                console.error(e);
+                showStatus('error', `🔥 物理阻断: ${e.message}`);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
+        }
+
+        // --- 辅助 UI 工具 ---
+        let statusTimeout;
+        function showStatus(type, message) {
+            const overlay = document.getElementById('statusOverlay');
+            const icon = overlay.querySelector('.icon');
+            const text = overlay.querySelector('.text');
+            
+            overlay.className = 'show';
+            if (type === 'success') {
+                overlay.classList.add('success');
+                icon.textContent = '✅';
+            } else if (type === 'error') {
+                overlay.classList.add('error');
+                icon.textContent = '❌';
+            } else {
+                overlay.style.background = 'rgba(168, 199, 250, 0.15)';
+                overlay.style.borderColor = 'rgba(168, 199, 250, 0.4)';
+                overlay.style.color = '#a8c7fa';
+                icon.textContent = '⚡';
+            }
+            
+            text.textContent = message;
+            
+            clearTimeout(statusTimeout);
+            statusTimeout = setTimeout(() => {
+                overlay.classList.remove('show');
+            }, 3000);
+        }
+
+        // 页面加载完成启动扫描
+        window.addEventListener('DOMContentLoaded', initRegistry);
+    </script>
+</body>
+</html>

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🏛️ 星门档案馆 (阿卡夏时间神殿)</title>
+    <style>
+        /* === 四维时空工业风变量 === */
+        :root {
+            --bg-dark: #050505; --bg-panel: #111114; --bg-surface: #1a1b1e;
+            --text-main: #e8e8e8; --text-muted: #888;
+            --accent-cyan: #20c997; --accent-purple: #b388ff; --accent-gold: #f1c40f; --danger: #ff5f56;
+            --border: #2a2b2f;
+        }
+        
+        html, body { margin: 0; padding: 0; background: var(--bg-dark); color: var(--text-main); font-family: 'Courier New', system-ui, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-purple); }
+
+        /* === 绝对置顶 Header === */
+        .fixed-header { 
+            position: fixed; top: 0; left: 0; right: 0; height: 60px; z-index: 1000;
+            background: rgba(5, 5, 5, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); 
+            display: flex; justify-content: space-between; align-items: center; padding: 0 20px;
+        }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .icon-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.85rem; text-decoration: none; }
+        .icon-btn:hover { color: var(--text-main); border-color: #555; }
+        .header-title { margin: 0; font-size: 1.1rem; font-weight: bold; color: var(--text-main); letter-spacing: 2px; }
+        .header-right { display: flex; gap: 5px; height: 100%; align-items: center; }
+        .nav-btn { background: transparent; border: none; color: var(--text-muted); padding: 0 15px; cursor: pointer; font-size: 0.9rem; transition: 0.2s; text-decoration: none; height: 100%; display: inline-flex; align-items: center; }
+        .nav-btn.active { color: var(--accent-purple); border-bottom: 2px solid var(--accent-purple); font-weight: bold; text-shadow: 0 0 10px rgba(179,136,255,0.4); }
+
+        /* === 视图容器 === */
+        .view-section { display: none; flex: 1; margin-top: 60px; overflow: hidden; animation: fadeIn 0.4s ease-out; }
+        .view-section.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* === 📚 大盘：快照矩阵 === */
+        .grid-layout { padding: 40px; overflow-y: auto; width: 100%; max-width: 1400px; margin: 0 auto; }
+        .archive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .archive-card { 
+            background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; 
+            cursor: pointer; transition: 0.3s; position: relative; overflow: hidden;
+        }
+        .archive-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, var(--accent-cyan), var(--accent-purple)); opacity: 0.3; transition: 0.3s; }
+        .archive-card:hover { transform: translateY(-5px); border-color: #555; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .archive-card:hover::before { opacity: 1; width: 6px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px dashed #333; padding-bottom: 10px; }
+        .card-id { font-size: 1.1rem; font-weight: bold; color: #fff; }
+        .card-date { font-size: 0.75rem; color: var(--text-muted); background: #000; padding: 3px 8px; border-radius: 4px; border: 1px solid #222; }
+
+        /* === 🏛️ 神殿：四维时空操作台 === */
+        .temple-layout { display: flex; width: 100%; height: 100%; background: var(--bg-dark); }
+        
+        /* 左侧：时间轴 (Timeline) */
+        .timeline-panel { flex: 6; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--bg-panel); position: relative; }
+        .panel-header { padding: 15px 20px; background: #000; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-weight: bold; letter-spacing: 1px; color: var(--accent-cyan); }
+        .chat-scroll { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
+        
+        .msg-node { background: var(--bg-surface); border: 1px solid #222; border-radius: 8px; padding: 15px; position: relative; transition: 0.3s; }
+        .msg-node.collapsed { opacity: 0.3; filter: grayscale(100%); transform: scale(0.98); pointer-events: none; }
+        .msg-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px dashed #333; padding-bottom: 8px; }
+        .msg-role { font-weight: bold; color: var(--accent-purple); font-size: 0.9rem; }
+        .msg-content { font-size: 0.9rem; color: #ccc; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
+        
+        /* 📍 时间锚点工具 */
+        .anchor-btn { position: absolute; right: -15px; top: 50%; transform: translateY(-50%); background: var(--accent-gold); color: #000; border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 1rem; opacity: 0; transition: 0.2s; box-shadow: 0 0 15px rgba(241,196,15,0.4); display: flex; justify-content: center; align-items: center; z-index: 10; }
+        .msg-node:hover .anchor-btn { opacity: 1; right: -15px; }
+        .anchor-btn:hover { transform: translateY(-50%) scale(1.2); }
+        .anchor-line { position: absolute; bottom: -15px; left: 0; width: 100%; height: 2px; background: var(--accent-gold); display: none; z-index: 5; box-shadow: 0 0 10px var(--accent-gold); }
+        .msg-node.anchored .anchor-line { display: block; }
+        .msg-node.anchored { border-color: var(--accent-gold); box-shadow: 0 0 20px rgba(241,196,15,0.1); }
+
+        /* 右侧：固件手术台 (Firmware Rack) */
+        .firmware-panel { flex: 4; display: flex; flex-direction: column; background: #0a0a0c; }
+        .fw-workspace { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+        
+        .agent-rack { background: var(--bg-panel); border: 1px inset #222; border-radius: 8px; padding: 15px; }
+        .agent-name { color: #fff; font-weight: bold; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .dna-list { display: flex; flex-direction: column; gap: 8px; }
+        .dna-pill { background: #000; border: 1px solid #333; padding: 8px 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #aaa; transition: 0.2s; }
+        .dna-pill:hover { border-color: var(--accent-purple); color: #fff; }
+        .dna-action { display: flex; gap: 5px; }
+        .dna-btn { background: transparent; border: none; cursor: pointer; font-size: 1rem; opacity: 0.6; transition: 0.2s; }
+        .dna-btn:hover { opacity: 1; transform: scale(1.2); }
+        
+        .add-dna-btn { width: 100%; background: transparent; border: 1px dashed #444; color: #666; padding: 8px; border-radius: 6px; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+        .add-dna-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(32,201,151,0.05); }
+
+        /* 底部点火引擎 */
+        .ignite-dock { padding: 20px; background: #000; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+        .ignite-btn { width: 100%; padding: 15px; background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple)); color: #000; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.3s; box-shadow: 0 0 20px rgba(179,136,255,0.3); }
+        .ignite-btn:hover { filter: brightness(1.2); box-shadow: 0 0 30px rgba(179,136,255,0.6); transform: translateY(-2px); }
+        .ignite-btn:disabled { background: #333; color: #666; cursor: not-allowed; box-shadow: none; transform: none; }
+
+        .empty-state { text-align: center; color: #555; padding: 80px 20px; font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+
+    <div class="fixed-header">
+        <div class="header-left">
+            <a href="/" class="icon-btn">❮ 矩阵大厅</a>
+            <h2 class="header-title"><span style="color: var(--accent-purple);">⧖</span> 阿卡夏·时间神殿</h2>
+        </div>
+        <div class="header-right">
+            <a href="/x.html" class="nav-btn">1 神谕舱</a>
+            <a href="/xx.html" class="nav-btn active">2 时间神殿</a>
+            <a href="/osdna.html" class="nav-btn">3 基因库</a>
+        </div>
+    </div>
+
+    <div id="archives-view" class="view-section active">
+        <div class="grid-layout">
+            <div style="display:flex; justify-content:space-between; margin-bottom: 20px; color:#888;">
+                <span>选择一个历史奇点，开启您的时间线回溯与平行宇宙演化。</span>
+                <button class="icon-btn" onclick="loadArchives()">🔄 重新扫描磁道</button>
+            </div>
+            <div class="archive-grid" id="archiveGrid"></div>
+        </div>
+    </div>
+
+    <div id="temple-view" class="view-section">
+        <div class="temple-layout">
+            
+            <div class="timeline-panel">
+                <div class="panel-header">
+                    <span>⏳ 历史事件轴 (The Immutable Timeline)</span>
+                    <span id="temple-meeting-id" style="color:#666; font-family:monospace;">--</span>
+                </div>
+                <div class="chat-scroll" id="timelineScroll">
+                    <div class="empty-state">提取脑电波中...</div>
+                </div>
+            </div>
+
+            <div class="firmware-panel">
+                <div class="panel-header" style="color: var(--accent-purple);">
+                    <span>🧬 活体固件手术台 (Firmware Rack)</span>
+                    <button class="icon-btn" style="padding:2px 8px;" onclick="closeTemple()">✖ 退出神殿</button>
+                </div>
+                <div class="fw-workspace" id="firmwareWorkspace">
+                    <div class="empty-state">请先在左侧时间轴设定【📍 锚点】</div>
+                </div>
+                <div class="ignite-dock">
+                    <div style="font-size:0.75rem; color:#888; text-align:center;">基于选中锚点，挂载重组后的固件，开启新的平行时间线</div>
+                    <button class="ignite-btn" id="igniteBtn" disabled onclick="forkAndIgnite()">🌌 携带新固件 · 跃迁平行宇宙 (Fork)</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // === 核心数据模型 ===
+        let currentMeetingId = null;
+        let rawTimelineData = "";
+        let parsedMessages = [];
+        let agentFirmwares = {}; // { agent_id: { role: '...', dnas: ['DNA_1', 'DNA_2'] } }
+        let currentAnchorIndex = -1; // -1 表示未截断
+
+        // === 路由与视图切换 ===
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById(`${viewId}-view`).classList.add('active');
+            if(viewId === 'archives') loadArchives();
+        }
+
+        function closeTemple() {
+            currentMeetingId = null; parsedMessages = []; agentFirmwares = {}; currentAnchorIndex = -1;
+            switchView('archives');
+        }
+
+        // === 📚 阶段一：加载历史大盘 ===
+        async function loadArchives() {
+            const gridEl = document.getElementById('archiveGrid');
+            gridEl.innerHTML = '<div class="empty-state">⏳ 扫描物理扇区中...</div>';
+            try {
+                const res = await fetch('/api/stargate/archives');
+                const json = await res.json();
+                const archives = json.data || [];
+
+                if (archives.length === 0) {
+                    gridEl.innerHTML = '<div class="empty-state">🕳️ 时空长河中暂无任何星门记录</div>';
+                    return;
+                }
+
+                gridEl.innerHTML = archives.map(arc => `
+                    <div class="archive-card" onclick="openTimeTemple('${arc.meeting_id}')">
+                        <div class="card-header">
+                            <span class="card-id">${arc.meeting_id.split('_').pop()}</span>
+                            <span class="card-date">${arc.date.split(' ')[0]}</span>
+                        </div>
+                        <div style="color:#aaa; font-size:0.85rem; line-height:1.5;">
+                            物理快照 ID: <br><span style="color:#fff; font-family:monospace;">${arc.meeting_id}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                gridEl.innerHTML = `<div class="empty-state" style="color:var(--danger)">❌ 档案馆断连: ${e.message}</div>`;
+            }
+        }
+
+        // === 🏛️ 阶段二：打开时间神殿 (解析黑板与公文包) ===
+        async function openTimeTemple(meetingId) {
+            currentMeetingId = meetingId;
+            document.getElementById('temple-meeting-id').innerText = meetingId;
+            switchView('temple');
+            
+            const timelineEl = document.getElementById('timelineScroll');
+            timelineEl.innerHTML = '<div class="empty-state">⏳ 逆转时间线中...</div>';
+            document.getElementById('firmwareWorkspace').innerHTML = '<div class="empty-state">解析生命体基因图谱中...</div>';
+            document.getElementById('igniteBtn').disabled = true;
+
+            try {
+                const res = await fetch(`/api/stargate/archives/${meetingId}`);
+                if(!res.ok) throw new Error("时空快照已被物理焚毁");
+                const json = await res.json();
+                
+                // 1. 解析黑板 (Center Board) 为消息节点
+                rawTimelineData = json.data.center_board || "";
+                parseTimeline(rawTimelineData);
+                
+                // 2. 解析特工的公文包，提取初始 DNA 阵列
+                agentFirmwares = {};
+                const briefcases = json.data.briefcases || {};
+                for (const [aid, text] of Object.entries(briefcases)) {
+                    // 模拟从公文包文本中提取装载的 DNA (实际上最好由后端直接提供 JSON 结构)
+                    // 这里我们采用正则粗略提取，或生成默认白板
+                    let dnas = [];
+                    const matches = text.match(/\[法则:\s*(.*?)\]/g);
+                    if(matches) {
+                        dnas = matches.map(m => m.replace('[法则:', '').replace(']', '').trim());
+                    }
+                    agentFirmwares[aid] = { role: `Agent_${aid.substring(0,4)}`, dnas: dnas };
+                }
+
+                currentAnchorIndex = parsedMessages.length - 1; // 默认锚定在最末尾
+                renderTimeline();
+                renderFirmwareRack();
+                
+            } catch(e) {
+                timelineEl.innerHTML = `<div class="empty-state" style="color:var(--danger)">❌ 时空断裂: ${e.message}</div>`;
+            }
+        }
+
+        function parseTimeline(boardText) {
+            parsedMessages = [];
+            const regex = /\*\*\[(.*?)\]\*\* \((Round \d+)\):[\r\n]+([\s\S]*?)(?=\*\*\[|$)/g;
+            let match;
+            while ((match = regex.exec(boardText)) !== null) {
+                parsedMessages.push({ role: match[1], round: match[2], text: match[3].trim() });
+            }
+            if(parsedMessages.length === 0 && boardText) {
+                parsedMessages.push({ role: "System", round: "Genesis", text: boardText.replace(/# 星门会议纪要.*?\n\n/g, '') });
+            }
+        }
+
+        // === 📍 阶段三：视觉截断与锚点设定 ===
+        function renderTimeline() {
+            const container = document.getElementById('timelineScroll');
+            container.innerHTML = parsedMessages.map((msg, index) => {
+                const isCollapsed = index > currentAnchorIndex;
+                const isAnchored = index === currentAnchorIndex;
+                return `
+                <div class="msg-node ${isCollapsed ? 'collapsed' : ''} ${isAnchored ? 'anchored' : ''}" id="msg-node-${index}">
+                    <div class="msg-header">
+                        <span class="msg-role">${escapeHtml(msg.role)} (${msg.round})</span>
+                    </div>
+                    <div class="msg-content">${escapeHtml(msg.text)}</div>
+                    
+                    <button class="anchor-btn" onclick="setAnchor(${index})" title="在此截断时间线">📍</button>
+                    <div class="anchor-line"></div>
+                </div>`;
+            }).join('');
+            
+            // 滚动到锚点位置
+            const anchorNode = document.getElementById(`msg-node-${currentAnchorIndex}`);
+            if(anchorNode) anchorNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        window.setAnchor = function(index) {
+            currentAnchorIndex = index;
+            renderTimeline();
+            renderFirmwareRack(); // 锚定后激活固件台
+            document.getElementById('igniteBtn').disabled = false;
+            document.getElementById('igniteBtn').innerText = `🌌 携带新固件 · 从 ${parsedMessages[index].round} 跃迁平行宇宙`;
+        };
+
+        // === 🧬 阶段四：固件热插拔矩阵 ===
+        function renderFirmwareRack() {
+            const workspace = document.getElementById('firmwareWorkspace');
+            if (currentAnchorIndex === -1) {
+                workspace.innerHTML = '<div class="empty-state">请先在左侧时间轴设定【📍 锚点】</div>';
+                return;
+            }
+
+            let html = `<div style="color:var(--accent-purple); font-weight:bold; margin-bottom:10px;">当前时间锚点特工阵容与固件：</div>`;
+            
+            for (const [aid, data] of Object.entries(agentFirmwares)) {
+                html += `
+                <div class="agent-rack">
+                    <div class="agent-name">
+                        <span>🤖 ${data.role}</span>
+                        <span style="font-size:0.7rem; color:#666;">ID: ${aid}</span>
+                    </div>
+                    <div class="dna-list" id="dna-list-${aid}">
+                        ${data.dnas.map((dna, idx) => `
+                            <div class="dna-pill">
+                                <span>${escapeHtml(dna)}</span>
+                                <div class="dna-action">
+                                    <button class="dna-btn" title="降级/移除" style="color:var(--danger);" onclick="removeDna('${aid}', ${idx})">🗑️</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                        ${data.dnas.length === 0 ? '<span style="color:#555; font-size:0.8rem;">脑核已清空 (白板态)</span>' : ''}
+                    </div>
+                    <button class="add-dna-btn" onclick="promptAddDna('${aid}')">➕ 注入新基因补丁 (升级)</button>
+                </div>`;
+            }
+            workspace.innerHTML = html;
+        }
+
+        window.removeDna = function(aid, dnaIndex) {
+            agentFirmwares[aid].dnas.splice(dnaIndex, 1);
+            renderFirmwareRack();
+        };
+
+        window.promptAddDna = function(aid) {
+            const newDna = prompt("请输入要注入的 DNA ID 或法则名称：\n(实战中此处可接入达尔文突变车间刚提炼出的抗体)");
+            if (newDna && newDna.trim()) {
+                agentFirmwares[aid].dnas.push(newDna.trim());
+                renderFirmwareRack();
+            }
+        };
+
+        // === 🌌 阶段五：时空分叉与点火 (Fork & Ignite) ===
+        window.forkAndIgnite = async function() {
+            if(!confirm("⚠️ 时空分叉确认：\n系统将截取锚点之上的所有上下文，并携带右侧的全新固件阵容，召唤底层机床开启新的平行宇宙演化！\n\n确定跃迁？")) return;
+
+            // 1. 截断上下文
+            const truncatedMessages = parsedMessages.slice(0, currentAnchorIndex + 1);
+            let forkContext = "【历史前置快照导入】\n";
+            truncatedMessages.forEach(m => { forkContext += `**[${m.role}]** (${m.round}):\n${m.text}\n\n`; });
+            forkContext += "【系统指令：时空已在此刻分叉。请加载你们各自的全新脑核固件，基于上述语境继续推演！】";
+
+            // 2. 重组特工阵容 Config
+            let newAgentsConfig = [];
+            for (const [aid, data] of Object.entries(agentFirmwares)) {
+                newAgentsConfig.push({ // ✅ 修复为 push
+                    agent_id: aid,
+                    role: data.role,
+                    injected_dna: data.dnas 
+                });
+            }
+
+            const newMeetingId = `SG_FORK_${Date.now().toString().slice(-6)}`;
+            document.getElementById('igniteBtn').disabled = true;
+            document.getElementById('igniteBtn').innerText = "☄️ 引擎点火中...";
+
+            try {
+                // 调用后端 API (基于 main.py 的 stargate/start 接口)
+                const res = await fetch('/api/stargate/start', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        meeting_id: newMeetingId, 
+                        topic: forkContext, 
+                        rounds: 3, 
+                        agents_config: newAgentsConfig 
+                    })
+                });
+                
+                if(!res.ok) throw new Error("主脑拒绝点火");
+                
+                alert(`🌌 跃迁成功！已开辟平行宇宙：${newMeetingId}\n请前往【神谕舱】观测新时间线的演化！`);
+                window.location.href = `/x.html?id=${newMeetingId}`;
+
+            } catch (e) {
+                alert(`❌ 点火失败: ${e.message}`);
+                document.getElementById('igniteBtn').disabled = false;
+                document.getElementById('igniteBtn').innerText = "🌌 重新尝试跃迁";
+            }
+        };
+
+        function escapeHtml(str) { 
+            if(typeof str !== 'string') return '';
+            return str.replace(/[&<>'"]/g, tag => ({'&': '&amp;','<': '&lt;','>': '&gt;',"'": '&#39;','"': '&quot;'}[tag] || tag)); 
+        }
+
+        // 初始化加载大盘
+        window.addEventListener('DOMContentLoaded', loadArchives);
+    </script>
+</body>
+</html>
