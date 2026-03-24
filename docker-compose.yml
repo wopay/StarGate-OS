@@ -1,0 +1,35 @@
+# /vol1/1000/docker/0/docker-compose.yml
+services:
+  factory_0:
+    build: 
+      context: ./backend_py
+      dockerfile: Dockerfile
+    # 👑 身份确立：星门总厂 0 号节点
+    container_name: stargate_factory_0
+    restart: always
+    ports:
+      - "3333:3333"
+    volumes:
+      # 🪚 物理路径已全部重定向至全新的 0 号基地！
+      - /vol1/1000/docker/0/webroot:/app/data/webroot
+      - /vol1/1000/docker/0/storage:/app/data/storage
+      - /vol1/1000/docker/0/config:/app/data/config
+      - /vol1/1000/docker/0/backend_py/app:/app/app
+      # 🛡️ 星门物理通道 (神之手)：允许总厂操作底层的 CLI 监狱
+      - /var/run/docker.sock:/var/run/docker.sock
+      # 👁️ 厂长新增：全视之眼！挂载 CLI01 的脑电波与账本（绝对只读）
+      - /vol1/1000/docker/cli01/.gemini/tmp/app/chats:/mnt/cli01_brain_waves:ro
+      
+    environment:
+      - TZ=Asia/Shanghai
+      - PORT=3333
+      - DATA_DIR=/app/data
+      - HF_HOME=/app/data/config/hf_models_cache
+      - ENABLE_COMFYUI_WATCHER=0 
+      - COMFYUI_URL=http://192.168.2.155:8188 
+      - COMFYUI_RESTART_CMD=docker restart comfyui 
+      # 🎯 物理锁敌：明确告诉总厂，底层的算力黑屋叫什么！
+      - TARGET_CLI_CONTAINER=stargate_cli_01
+      
+    # 💡 挂载 docker 客户端，并补齐了 aiofiles 依赖！
+    command: sh -c "apt-get update && apt-get install -y docker.io antiword && pip install httpx slowapi chromadb sentence-transformers beautifulsoup4 apscheduler pdfplumber docx2txt pandas openpyxl python-pptx mammoth python-docx edge-tts aiofiles && uvicorn app.main:app --host 0.0.0.0 --port $${PORT} --reload"
